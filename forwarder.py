@@ -93,11 +93,12 @@ class Config:
 class Client(discord_user.Client):
 	def __init__(
 		self,
-		token : str,
-		config = [],
-		debug : bool = False,
-		list_channels : bool = False,
-		presence : discord_user.Status = None
+		token : str,							# Discord account token
+		config = [],							# Forward configuration
+		debug : bool = False,					# Disable connection
+		list_channels : bool = False,			# Show channels list
+		presence : discord_user.Status = None,	# User presence to set
+		section_name : str = None				# Name of the section in session file
 	):
 		self.token = token
 		self.debug = debug
@@ -109,13 +110,13 @@ class Client(discord_user.Client):
 		self.on_ready_task = None
 
 		# Used as prefix in session file
-		self.session_key = md5(token.encode()).hexdigest()
+		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
 		super().__init__()
 	
 	async def start(self, bot, session):
 		self.bot = bot
 
-		key = self.session_key
+		key = self.section_name
 		if key not in session:
 			session[key] = {}
 		self.session = session[key]
