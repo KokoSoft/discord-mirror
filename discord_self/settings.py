@@ -145,7 +145,7 @@ class _ProtoSettings:
     def to_dict(self, *, with_defaults: bool = False) -> Dict[str, Any]:
         return MessageToDict(
             self.settings,
-            including_default_value_fields=with_defaults,
+            #including_default_value_fields=with_defaults,
             preserving_proto_field_name=True,
             use_integers_for_enums=True,
         )
