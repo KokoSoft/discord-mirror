@@ -303,6 +303,14 @@ class BotConnection(discord_bot.Client):
 		if self.list_channels:
 			print_channel_list(self)
 
+	async def clone_file(self, file):
+		f = await file.to_file()
+		# Casts discord-self.py File class to discord.py File
+		return discord_bot.File(f.fp,
+			filename=f.filename,
+			description=f.description,
+			spoiler=f.spoiler)
+
 	async def forward(self, msg, ch):
 		if not self.is_ready():
 			return
@@ -311,7 +319,7 @@ class BotConnection(discord_bot.Client):
 			ch = self.get_channel(ch)
 
 		# API limits file size to 8MB
-		files = [await file.to_file() for file in msg.attachments if file.size <= 8*1024*1024]
+		files = [await self.clone_file(file) for file in msg.attachments if file.size <= 8*1024*1024]
 		
 		if msg.content or files or msg.embeds:
 			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
