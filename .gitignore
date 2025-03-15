@@ -1,0 +1,6 @@
+﻿/.vs
+__pycache__
+/session.json
+/tokens.py
+/*.log
+/*.json
