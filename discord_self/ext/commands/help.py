@@ -44,7 +44,7 @@ from typing import (
     Mapping,
 )
 
-import discord.utils
+import discord_self.utils
 from discord.utils import MISSING
 
 from .core import Group, Command, get_signature_parameters
@@ -53,7 +53,7 @@ from .errors import CommandError
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-    import discord.abc
+    import discord_self.abc
 
     from .bot import BotBase
     from .context import Context
@@ -674,7 +674,7 @@ class HelpCommand:
         as_lengths = (discord.utils._string_width(c.name) for c in commands)
         return max(as_lengths, default=0)
 
-    def get_destination(self) -> discord.abc.MessageableChannel:
+    def get_destination(self) -> discord_self.abc.MessageableChannel:
         """Returns the :class:`~discord.abc.Messageable` where the help command will be output.
 
         You can override this method to customise the behaviour.
@@ -1210,7 +1210,7 @@ class DefaultHelpCommand(HelpCommand):
         if self.show_parameter_descriptions:
             self.add_command_arguments(command)
 
-    def get_destination(self) -> discord.abc.Messageable:
+    def get_destination(self) -> discord_self.abc.Messageable:
         ctx = self.context
         if self.dm_help is True:
             return ctx.author
@@ -1473,7 +1473,7 @@ class MinimalHelpCommand(HelpCommand):
                     self.paginator.add_line(line)
                 self.paginator.add_line()
 
-    def get_destination(self) -> discord.abc.Messageable:
+    def get_destination(self) -> discord_self.abc.Messageable:
         ctx = self.context
         if self.dm_help is True:
             return ctx.author

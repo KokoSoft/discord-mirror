@@ -101,7 +101,7 @@ def _get_from_guilds(bot: _Bot, getter: str, argument: Any) -> Any:
 _utils_get = discord.utils.get
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
-CT = TypeVar('CT', bound=discord.abc.GuildChannel)
+CT = TypeVar('CT', bound=discord_self.abc.GuildChannel)
 TT = TypeVar('TT', bound=discord.Thread)
 
 
@@ -379,7 +379,7 @@ class PartialMessageConverter(Converter[discord.PartialMessage]):
     async def convert(self, ctx: Context[BotT], argument: str) -> discord.PartialMessage:
         guild_id, message_id, channel_id = self._get_id_matches(ctx, argument)
         channel = self._resolve_channel(ctx, guild_id, channel_id)
-        if not channel or not isinstance(channel, discord.abc.Messageable):
+        if not channel or not isinstance(channel, discord_self.abc.Messageable):
             raise ChannelNotFound(channel_id)
         return discord.PartialMessage(channel=channel, id=message_id)
 
@@ -405,7 +405,7 @@ class MessageConverter(IDConverter[discord.Message]):
         if message:
             return message
         channel = PartialMessageConverter._resolve_channel(ctx, guild_id, channel_id)
-        if not channel or not isinstance(channel, discord.abc.Messageable):
+        if not channel or not isinstance(channel, discord_self.abc.Messageable):
             raise ChannelNotFound(channel_id)
         try:
             return await channel.fetch_message(message_id)
@@ -415,7 +415,7 @@ class MessageConverter(IDConverter[discord.Message]):
             raise ChannelNotReadable(channel)  # type: ignore # type-checker thinks channel could be a DMChannel at this point
 
 
-class GuildChannelConverter(IDConverter[discord.abc.GuildChannel]):
+class GuildChannelConverter(IDConverter[discord_self.abc.GuildChannel]):
     """Converts to a :class:`~discord.abc.GuildChannel`.
 
     All lookups are via the local guild. If in a DM context, then the lookup
@@ -430,8 +430,8 @@ class GuildChannelConverter(IDConverter[discord.abc.GuildChannel]):
     .. versionadded:: 2.0
     """
 
-    async def convert(self, ctx: Context[BotT], argument: str) -> discord.abc.GuildChannel:
-        return self._resolve_channel(ctx, argument, 'channels', discord.abc.GuildChannel)
+    async def convert(self, ctx: Context[BotT], argument: str) -> discord_self.abc.GuildChannel:
+        return self._resolve_channel(ctx, argument, 'channels', discord_self.abc.GuildChannel)
 
     @staticmethod
     def _resolve_channel(ctx: Context[BotT], argument: str, attribute: str, type: Type[CT]) -> CT:
@@ -1186,7 +1186,7 @@ CONVERTER_MAPPING: Dict[type, Any] = {
     discord.PartialEmoji: PartialEmojiConverter,
     discord.CategoryChannel: CategoryChannelConverter,
     discord.Thread: ThreadConverter,
-    discord.abc.GuildChannel: GuildChannelConverter,
+    discord_self.abc.GuildChannel: GuildChannelConverter,
     discord.GuildSticker: GuildStickerConverter,
     discord.ScheduledEvent: ScheduledEventConverter,
     discord.ForumChannel: ForumChannelConverter,

@@ -44,7 +44,7 @@ from typing import (
 )
 import datetime
 
-import discord.abc
+import discord_self.abc
 from .scheduled_event import ScheduledEvent
 from .permissions import PermissionOverwrite, Permissions
 from .enums import ChannelType, EntityType, ForumLayoutType, ForumOrderType, PrivacyLevel, try_enum, VideoQualityMode
@@ -114,7 +114,7 @@ class ThreadWithMessage(NamedTuple):
     message: Message
 
 
-class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
+class TextChannel(discord_self.abc.Messageable, discord_self.abc.GuildChannel, Hashable):
     """Represents a Discord guild text channel.
 
     .. container:: operations
@@ -242,7 +242,7 @@ class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
     def _scheduled_event_entity_type(self) -> Optional[EntityType]:
         return None
 
-    @utils.copy_doc(discord.abc.GuildChannel.permissions_for)
+    @utils.copy_doc(discord_self.abc.GuildChannel.permissions_for)
     def permissions_for(self, obj: Union[Member, Role], /) -> Permissions:
         base = super().permissions_for(obj)
         self._apply_implicit_permissions(base)
@@ -401,7 +401,7 @@ class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
             # the payload will always be the proper channel payload
             return self.__class__(state=self._state, guild=self.guild, data=payload)  # type: ignore
 
-    @utils.copy_doc(discord.abc.GuildChannel.clone)
+    @utils.copy_doc(discord_self.abc.GuildChannel.clone)
     async def clone(self, *, name: Optional[str] = None, reason: Optional[str] = None) -> TextChannel:
         return await self._clone_impl(
             {'topic': self.topic, 'nsfw': self.nsfw, 'rate_limit_per_user': self.slowmode_delay}, name=name, reason=reason
@@ -514,7 +514,7 @@ class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
         List[:class:`.Message`]
             The list of messages that were deleted.
         """
-        return await discord.abc._purge_helper(
+        return await discord_self.abc._purge_helper(
             self,
             limit=limit,
             check=check,
@@ -873,7 +873,7 @@ class TextChannel(discord.abc.Messageable, discord.abc.GuildChannel, Hashable):
             before_timestamp = update_before(threads[-1])
 
 
-class VocalGuildChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc.GuildChannel, Hashable):
+class VocalGuildChannel(discord_self.abc.Messageable, discord_self.abc.Connectable, discord_self.abc.GuildChannel, Hashable):
     __slots__ = (
         'name',
         'id',
@@ -975,7 +975,7 @@ class VocalGuildChannel(discord.abc.Messageable, discord.abc.Connectable, discor
         """
         return [event for event in self.guild.scheduled_events if event.channel_id == self.id]
 
-    @utils.copy_doc(discord.abc.GuildChannel.permissions_for)
+    @utils.copy_doc(discord_self.abc.GuildChannel.permissions_for)
     def permissions_for(self, obj: Union[Member, Role], /) -> Permissions:
         base = super().permissions_for(obj)
         self._apply_implicit_permissions(base)
@@ -1135,7 +1135,7 @@ class VocalGuildChannel(discord.abc.Messageable, discord.abc.Connectable, discor
         List[:class:`.Message`]
             The list of messages that were deleted.
         """
-        return await discord.abc._purge_helper(
+        return await discord_self.abc._purge_helper(
             self,
             limit=limit,
             check=check,
@@ -1309,7 +1309,7 @@ class VoiceChannel(VocalGuildChannel):
         """:class:`ChannelType`: The channel's Discord type."""
         return ChannelType.voice
 
-    @utils.copy_doc(discord.abc.GuildChannel.clone)
+    @utils.copy_doc(discord_self.abc.GuildChannel.clone)
     async def clone(self, *, name: Optional[str] = None, reason: Optional[str] = None) -> VoiceChannel:
         return await self._clone_impl({'bitrate': self.bitrate, 'user_limit': self.user_limit}, name=name, reason=reason)
 
@@ -1552,7 +1552,7 @@ class StageChannel(VocalGuildChannel):
         """:class:`ChannelType`: The channel's Discord type."""
         return ChannelType.stage_voice
 
-    @utils.copy_doc(discord.abc.GuildChannel.clone)
+    @utils.copy_doc(discord_self.abc.GuildChannel.clone)
     async def clone(self, *, name: Optional[str] = None, reason: Optional[str] = None) -> StageChannel:
         return await self._clone_impl({}, name=name, reason=reason)
 
@@ -1739,7 +1739,7 @@ class StageChannel(VocalGuildChannel):
             return self.__class__(state=self._state, guild=self.guild, data=payload)  # type: ignore
 
 
-class CategoryChannel(discord.abc.GuildChannel, Hashable):
+class CategoryChannel(discord_self.abc.GuildChannel, Hashable):
     """Represents a Discord channel category.
 
     These are useful to group channels to logical compartments.
@@ -1816,7 +1816,7 @@ class CategoryChannel(discord.abc.GuildChannel, Hashable):
         """:class:`bool`: Checks if the category is NSFW."""
         return self.nsfw
 
-    @utils.copy_doc(discord.abc.GuildChannel.clone)
+    @utils.copy_doc(discord_self.abc.GuildChannel.clone)
     async def clone(self, *, name: Optional[str] = None, reason: Optional[str] = None) -> CategoryChannel:
         return await self._clone_impl({'nsfw': self.nsfw}, name=name, reason=reason)
 
@@ -1894,7 +1894,7 @@ class CategoryChannel(discord.abc.GuildChannel, Hashable):
             # the payload will always be the proper channel payload
             return self.__class__(state=self._state, guild=self.guild, data=payload)  # type: ignore
 
-    @utils.copy_doc(discord.abc.GuildChannel.move)
+    @utils.copy_doc(discord_self.abc.GuildChannel.move)
     async def move(self, **kwargs: Any) -> None:
         kwargs.pop('category', None)
         await super().move(**kwargs)
@@ -2078,7 +2078,7 @@ class ForumTag(Hashable):
         return self.name
 
 
-class ForumChannel(discord.abc.GuildChannel, Hashable):
+class ForumChannel(discord_self.abc.GuildChannel, Hashable):
     """Represents a Discord guild forum channel.
 
     .. container:: operations
@@ -2222,7 +2222,7 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
     def _sorting_bucket(self) -> int:
         return ChannelType.text.value
 
-    @utils.copy_doc(discord.abc.GuildChannel.permissions_for)
+    @utils.copy_doc(discord_self.abc.GuildChannel.permissions_for)
     def permissions_for(self, obj: Union[Member, Role], /) -> Permissions:
         base = super().permissions_for(obj)
         self._apply_implicit_permissions(base)
@@ -2289,7 +2289,7 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
         """:class:`bool`: Checks if the forum is NSFW."""
         return self.nsfw
 
-    @utils.copy_doc(discord.abc.GuildChannel.clone)
+    @utils.copy_doc(discord_self.abc.GuildChannel.clone)
     async def clone(self, *, name: Optional[str] = None, reason: Optional[str] = None) -> ForumChannel:
         return await self._clone_impl(
             {'topic': self.topic, 'nsfw': self.nsfw, 'rate_limit_per_user': self.slowmode_delay}, name=name, reason=reason
@@ -2765,7 +2765,7 @@ class ForumChannel(discord.abc.GuildChannel, Hashable):
             before_timestamp = update_before(threads[-1])
 
 
-class DMChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc.PrivateChannel, Hashable):
+class DMChannel(discord_self.abc.Messageable, discord_self.abc.Connectable, discord_self.abc.PrivateChannel, Hashable):
     """Represents a Discord direct message channel.
 
     .. container:: operations
@@ -3045,7 +3045,7 @@ class DMChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc.Pr
         *,
         timeout: float = 60.0,
         reconnect: bool = True,
-        cls: Callable[[Client, discord.abc.VocalChannel], T] = VoiceClient,
+        cls: Callable[[Client, discord_self.abc.VocalChannel], T] = VoiceClient,
         ring: bool = True,
     ) -> T:
         """|coro|
@@ -3124,7 +3124,7 @@ class DMChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc.Pr
         await self._state.http.decline_message_request(self.id)
 
 
-class GroupChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc.PrivateChannel, Hashable):
+class GroupChannel(discord_self.abc.Messageable, discord_self.abc.Connectable, discord_self.abc.PrivateChannel, Hashable):
     """Represents a Discord group channel.
 
     .. container:: operations
@@ -3593,7 +3593,7 @@ class GroupChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc
         *,
         timeout: float = 60.0,
         reconnect: bool = True,
-        cls: Callable[[Client, discord.abc.VocalChannel], T] = VoiceClient,
+        cls: Callable[[Client, discord_self.abc.VocalChannel], T] = VoiceClient,
         ring: bool = True,
     ) -> T:
         await self._get_channel()
@@ -3603,7 +3603,7 @@ class GroupChannel(discord.abc.Messageable, discord.abc.Connectable, discord.abc
         return await super().connect(timeout=timeout, reconnect=reconnect, cls=cls)
 
 
-class PartialMessageable(discord.abc.Messageable, Hashable):
+class PartialMessageable(discord_self.abc.Messageable, Hashable):
     """Represents a partial messageable to aid with working messageable channels when
     only a channel ID is present.
 

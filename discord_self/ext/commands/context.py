@@ -39,8 +39,8 @@ from typing import (
     Union,
 )
 
-import discord.abc
-import discord.utils
+import discord_self.abc
+import discord_self.utils
 from discord.message import Message
 from discord.utils import MISSING
 
@@ -85,7 +85,7 @@ def is_cog(obj: Any) -> TypeGuard[Cog]:
     return hasattr(obj, '__cog_commands__')
 
 
-class Context(discord.abc.Messageable, Generic[BotT]):
+class Context(discord_self.abc.Messageable, Generic[BotT]):
     r"""Represents the context in which a command is being invoked under.
 
     This class contains a lot of meta data to help you understand more about
@@ -284,7 +284,7 @@ class Context(discord.abc.Messageable, Generic[BotT]):
         """:class:`bool`: Checks if the invocation context is valid to be invoked with."""
         return self.prefix is not None and self.command is not None
 
-    async def _get_channel(self) -> discord.abc.Messageable:
+    async def _get_channel(self) -> discord_self.abc.Messageable:
         return self.channel
 
     @property
@@ -510,7 +510,7 @@ class Context(discord.abc.Messageable, Generic[BotT]):
         *,
         limit: Optional[int] = None,
         command_ids: Optional[Collection[int]] = None,
-        application: Optional[discord.abc.Snowflake] = None,
+        application: Optional[discord_self.abc.Snowflake] = None,
         with_applications: bool = True,
     ) -> AsyncIterator[MessageCommand]:
         return self.message.message_commands(

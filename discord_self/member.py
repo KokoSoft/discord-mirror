@@ -30,7 +30,7 @@ import itertools
 from operator import attrgetter
 from typing import Any, Awaitable, Callable, Collection, Dict, List, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
 
-import discord.abc
+import discord_self.abc
 
 from . import utils
 from .asset import Asset
@@ -217,7 +217,7 @@ def flatten_user(cls: T) -> T:
 
 
 @flatten_user
-class Member(discord.abc.Messageable, discord.abc.Connectable, _UserTag):
+class Member(discord_self.abc.Messageable, discord_self.abc.Connectable, _UserTag):
     """Represents a Discord member to a :class:`Guild`.
 
     This implements a lot of the functionality of :class:`User`.
@@ -703,7 +703,7 @@ class Member(discord.abc.Messageable, discord.abc.Connectable, _UserTag):
         mute: bool = MISSING,
         deafen: bool = MISSING,
         suppress: bool = MISSING,
-        roles: Collection[discord.abc.Snowflake] = MISSING,
+        roles: Collection[discord_self.abc.Snowflake] = MISSING,
         voice_channel: Optional[VocalGuildChannel] = MISSING,
         timed_out_until: Optional[datetime.datetime] = MISSING,
         avatar: Optional[bytes] = MISSING,
