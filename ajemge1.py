@@ -58,9 +58,9 @@ sources = [
 	], section_name = "special", debug = False, list_channels = False, presence = discord.Status.invisible)
 ]
 
-bot = forwarder.Bot(tokens.BOT, sources,
+bot = forwarder.Bot(tokens.BOT,
 	allowed_mentions = discord.AllowedMentions(users=False, roles=False),
 	debug = False,
 	list_channels = False)
 mod_parser.set_bot(bot)
-bot.run()
+forwarder.BotRunner(bot, sources).run()
