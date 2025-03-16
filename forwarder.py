@@ -256,7 +256,8 @@ class Client(discord_user.Client):
 		await self.bot.wait_until_ready()
 
 		for cfg in self.config:
-			get_history = cfg.restore and not cfg.only_deleted and cfg.sources
+			get_history = (cfg.restore or cfg.copy_history) and \
+						  not cfg.only_deleted and cfg.sources
 			for src in cfg.sources:
 				if get_history:
 					await self.history_from(cfg, src)
