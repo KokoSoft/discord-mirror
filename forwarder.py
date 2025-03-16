@@ -1,6 +1,5 @@
-from ctypes import Union
-from typing import Sequence
-from collections.abc import Callable
+from typing import Sequence, Union, NewType
+from collections.abc import Callable, Awaitable
 import discord as discord_bot
 import discord_self as discord_user
 import asyncio
@@ -85,18 +84,22 @@ class ParsedWebHookMessage:
 		self.avatar_url = avatar_url
 		self.allowed_mentions = allowed_mentions
 
+Sendable = NewType('Sendable', Union[ParsedMessage, ParsedWebHookMessage, discord_user.Message])
+SyncParserCallback = NewType('SyncParserCallback', Callable[[discord_user.message.Message], Sendable])
+AsyncParserCallback = NewType('AsyncParserCallback', Awaitable[[discord_user.Message], Sendable])
+ParserCallback = NewType('ParserCallback', Union[SyncParserCallback, AsyncParserCallback])
+
 class Config:
 	def __init__(self,
-		# TODO: Describe sources int, [int] or None for any channels
-		sources : int = None,			# Source channels, None means any channel
-		destinations = [],# : Union[int, Sequence[int]],
-		# TODO: Describa parser params
-		parser : Callable[..., bool] = None,
-		copy_history : bool = False,		# Copy whole channel history
-		only_deleted : bool = False,		# Forward only deleted messages
-		restore : bool = True,				# Restore missed messages
-		history_depth : datetime = None,	# Point in time from which start copying channel history
-		discard_session : bool = False,
+		sources : int | Sequence[int] | None = None,	# Source channels, None means any channel
+		destinations : int | Sequence[int] | None = [],	# List of destination channels
+		parser : ParserCallback | None = None,			# Function used to parse a message before forward
+		copy_history : bool = False,					# Copy whole channel history
+		only_deleted : bool = False,					# Forward only deleted messages
+		restore : bool = True,							# Restore missed messages
+		history_depth : datetime | None = None,			# Point in time from which start copying channel history
+		discard_session : bool = False,					# Ignore session data stored in file
+		debug : bool = False,
 	):
 		if isinstance(sources, int):
 			sources = [ sources ]
