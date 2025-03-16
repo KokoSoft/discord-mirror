@@ -275,15 +275,17 @@ class Client(discord_user.Client):
 							self.set_variable(source, dst_id, 'last_msg_id', last_id)
 
 
-class BotConnection(discord_bot.Client):
+class Bot(discord_bot.Client):
 	def __init__(
 		self,
-		token : str,
-		list_channels : bool = False,
-		allowed_mentions = None,
+		token : str,											# Discord bot token
+		list_channels : bool = False,							# Show channels list
+		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
+		debug : bool = False,									# Disable connection
 	):
 		self.token = token
 		self.list_channels = list_channels
+		self.debug = debug
 
 		intents = discord_bot.Intents.default()
 		#intents.message_content = True
@@ -291,7 +293,8 @@ class BotConnection(discord_bot.Client):
 		
 	async def start(self):
 		try:
-			await super().start(self.token)
+			if not self.debug:
+				await super().start(self.token)
 		except asyncio.exceptions.CancelledError as e:
 			pass
 		# GeneratorExit
@@ -327,23 +330,15 @@ class BotConnection(discord_bot.Client):
 			await ch.send(msg.content, embeds = msg.embeds, files = files)
 
 
-class Bot(BotConnection):
+class BotRunner():
 	def __init__(self,
-		token : str,
+		bot,
 		sources : list[Config] = [],
 		session_file : str = "session.json",
-		debug : bool = False,
-		list_channels : bool = False,
-		allowed_mentions = None,
 	):
-		super().__init__(token,
-						 list_channels = list_channels,
-						 allowed_mentions = allowed_mentions
-		)
-
+		self.bot = bot
 		self.sources = sources
 		self.session_file = session_file
-		self.debug = debug
 
 		discord_bot.utils.setup_logging(
 			handler=discord_bot.utils.MISSING,
@@ -359,9 +354,8 @@ class Bot(BotConnection):
 			session = {}
 
 		loop = asyncio.get_event_loop()
-		tasks = [loop.create_task(src.start(self, session)) for src in self.sources]
-		if not self.debug:
-			tasks.append(loop.create_task(self.start(), name='Bot connection'))
+		tasks = [loop.create_task(src.start(self.bot, session)) for src in self.sources]
+		tasks.append(loop.create_task(self.bot.start(), name='Bot connection'))
 
 		try:
 			loop.run_forever()
