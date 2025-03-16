@@ -55,12 +55,35 @@ def is_async(obj):
 	return asyncio.iscoroutinefunction(obj) or \
 		(hasattr(obj, '__call__') and asyncio.iscoroutinefunction(obj.__call__))
 
-# Use this class to copy received message. The original message is stored in cache
+# Use this class to copy received message.
+# The original message is stored in a discord.py cache
 class ParsedMessage:
 	def __init__(self, message):
 		self.content = message.content
 		self.embeds = [emb for emb in message.embeds if emb.type != 'gifv' ]
 		self.attachments = list(message.attachments)
+
+# Use this class to copy received message for a WebHook.
+# The original message is stored in a discord.py cache
+class ParsedWebHookMessage:
+	def __init__(self,
+		message : discord_user.Message,
+		username : str = None,
+		avatar_url : str = None,
+		allowed_mentions = None,
+	):
+		if isinstance(message, str):
+			self.content = message
+			self.embeds = []
+			self.attachments = []
+		else:
+			self.content = message.content
+			self.embeds = [emb for emb in message.embeds if emb.type != 'gifv' ]
+			self.attachments = list(message.attachments)
+
+		self.username = username
+		self.avatar_url = avatar_url
+		self.allowed_mentions = allowed_mentions
 
 class Config:
 	def __init__(self,
@@ -273,6 +296,88 @@ class Client(discord_user.Client):
 						if last_id > (msg_id or 0):
 							await self.bot.forward(parsed_msg, dst_ch)
 							self.set_variable(source, dst_id, 'last_msg_id', last_id)
+
+import aiohttp
+from datetime import datetime
+
+class WebHookChannel():
+	def __init__(
+		self,
+		id : int,
+		url : str,
+		token : str = None,
+	):
+		self.id = id
+		self.url = url
+		self.token = token
+
+	async def send(self,
+		content : str,
+		embeds = None,
+		files = None,
+	):
+			async with aiohttp.ClientSession() as session:
+				hook = discord_bot.Webhook.from_url(self.url, session = session, bot_token=self.token)
+				for i in range(1000):
+					await hook.send(content = content + datetime.now().strftime( '%Y-%m-%d %H:%M:%S'), username = f"user {i}")
+		#discord_webhook.DiscordWebhook()
+
+
+class WebHookBot():
+	def __init__(
+		self,
+		channels_config : list[WebHookChannel] = [],	# Output channels configuration
+		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
+	):
+		self.channels_config = channels_config
+		self.allowed_mentions = allowed_mentions
+
+		self.channels = { ch.id : ch for ch in channels_config }
+		
+	async def start(self):
+		# No task needed
+		pass
+
+	def is_ready(self):
+		return True
+
+	async def wait_until_ready(self):
+		pass
+
+	def get_channel(self, channel_id : int):
+		return self.channels[channel_id]
+
+	async def clone_file(self, file):
+		f = await file.to_file()
+		# Casts discord-self.py File class to discord.py File
+		return discord_bot.File(f.fp,
+			filename=f.filename,
+			description=f.description,
+			spoiler=f.spoiler)
+
+	async def forward(self, msg, channel):
+		if isinstance(msg, discord_user.Message):
+			msg = ParsedWebHookMessage(msg)
+
+		if not isinstance(msg, ParsedWebHookMessage):
+			raise TypeError("Invalid message object type.")
+
+		if isinstance(channel, int):
+			channel = self.get_channel(channel)
+
+		if not isinstance(channel, WebHookChannel):
+			raise TypeError("Invalid channel object type.")
+
+		if not msg.allowed_mentions:
+			msg.allowed_mentions = self.allowed_mentions
+
+		# API limits file size to 20MB
+		#files = [await self.clone_file(file) for file in msg.attachments if file.size <= 20*1024*1024]
+		files = None
+
+		if msg.content or files or msg.embeds:
+			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
+			await channel.send(msg.content, embeds = msg.embeds, files = files)
 
 
 class Bot(discord_bot.Client):
