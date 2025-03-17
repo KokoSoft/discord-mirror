@@ -55,12 +55,19 @@ def is_async(obj):
 		(hasattr(obj, '__call__') and asyncio.iscoroutinefunction(obj.__call__))
 
 # Use this class to copy received message.
-# The original message is stored in a discord.py cache
+# The original message is stored in a discord.py cache and its passed to on_message_delete 
 class ParsedMessage:
 	def __init__(self, message):
-		self.content = message.content
-		self.embeds = [emb for emb in message.embeds if emb.type != 'gifv' ]
+		self.content = message.clean_content
+		self.embeds = [emb for emb in message.embeds if emb.type == 'rich' ]
 		self.attachments = list(message.attachments)
+		self.username = message.author.display_name
+		self.avatar_url = message.author.avatar.url if message.author.avatar else None
+		#self.require_webhook = False
+		#for file in self.attachments:
+		#	if file.
+
+
 
 # Use this class to copy received message for a WebHook.
 # The original message is stored in a discord.py cache
@@ -398,15 +405,19 @@ class Bot(discord_bot.Client, SessionStore):
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
 		section_name : str = None,								# Name of the section in session file
 		debug : bool = False,									# Disable connection
+		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname and upload bigger files)
 	):
 		self.token = token
 		self.list_channels = list_channels
+		self.use_webhooks = use_webhooks
 		self.debug = debug
+		self.webhooks = {}
 
 		# Used as prefix in session file
 		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
 
 		intents = discord_bot.Intents.default()
+		intents.webhooks = use_webhooks
 		#intents.message_content = True
 		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
 		
@@ -419,7 +430,7 @@ class Bot(discord_bot.Client, SessionStore):
 		except asyncio.exceptions.CancelledError as e:
 			pass
 		# GeneratorExit
-
+		self.store_webhooks()
 		await self.close()
 	
 	async def on_ready(self):
@@ -427,6 +438,79 @@ class Bot(discord_bot.Client, SessionStore):
 
 		if self.list_channels:
 			print_channel_list(self)
+
+		if self.use_webhooks:
+			await self.configure_webhooks()
+
+	# Store WebHooks tokens in session file
+	def store_webhooks(self):
+		for channel_id, hook in self.webhooks.items():
+			print(hook)
+			self.set_variable('webhooks', channel_id, 'token', hook.token)
+			self.set_variable('webhooks', channel_id, 'name', hook.name)
+
+	def retrieve_webhooks(self):
+		if 'webhooks' in self.session:
+			for channel_id in self.session['webhooks']:
+				token = self.get_variable('webhooks', channel_id, 'token')
+				name = self.get_variable('webhooks', channel_id, 'name')
+				hook = discord_bot.Webhook.from_url(
+					f'https://discord.com/api/webhooks/{channel_id}/{token}',
+					client = self)
+				hook.name = name
+				self.webhooks[channel_id] = hook
+
+	async def configure_webhooks(self):
+		self.retrieve_webhooks()
+		return
+
+		hook = await self.get_channel_webhook(1348821512911585381)
+		await hook.send('hahah!')
+		for guild in self.guilds:
+			hooks = await guild.webhooks()
+			self.webhooks = { h.channel_id : h for h in hooks }
+			'''
+			print(guild.name)
+			for channel in guild.channels:
+					if not (isinstance(channel, discord_bot.TextChannel) or \
+							isinstance(channel, discord_bot.VoiceChannel) or \
+							isinstance(channel, discord_bot.StageChannel) or \
+							isinstance(channel, discord_bot.ForumChannel)):
+						continue
+
+					print('	', channel.name)
+					hooks = await channel.webhooks()
+					print(hooks)
+					if not hooks:
+						print('No hooks!')
+						await channel.create_webhook(
+							name = "Content Mirror Bot",
+							reason = "Automatically created WebHook for the bot needs.")
+		#
+		hook = hooks[0]
+		print(hook.token, hook. name, hook.channel_id)
+		hook.session = LoggingClientSession()
+		await hook.send("Hello from bot!")'''
+
+	async def get_channel_webhook(self, channel_id : int):
+		if channel_id in self.webhooks:
+			return self.webhooks[channel_id]
+
+		channel = self.get_channel(channel_id)
+		if not channel:
+			return None
+
+		hooks = await channel.webhooks()
+		if hooks:
+			hook = hooks[0]
+		else:
+			print('create webhook')
+			hook = await channel.create_webhook(
+				name = "Content Mirror Bot",
+				reason = "Automatically created WebHook for the bot needs.")
+
+		self.webhooks[channel_id] = hook
+		return hook
 
 	async def clone_file(self, file):
 		f = await file.to_file()
