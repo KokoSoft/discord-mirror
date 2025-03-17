@@ -55,12 +55,19 @@ def is_async(obj):
 		(hasattr(obj, '__call__') and asyncio.iscoroutinefunction(obj.__call__))
 
 # Use this class to copy received message.
-# The original message is stored in a discord.py cache
+# The original message is stored in a discord.py cache and its passed to on_message_delete 
 class ParsedMessage:
 	def __init__(self, message):
-		self.content = message.content
-		self.embeds = [emb for emb in message.embeds if emb.type != 'gifv' ]
+		self.content = message.clean_content
+		self.embeds = [emb for emb in message.embeds if emb.type == 'rich' ]
 		self.attachments = list(message.attachments)
+		self.username = message.author.display_name
+		self.avatar_url = message.author.avatar.url if message.author.avatar else None
+		#self.require_webhook = False
+		#for file in self.attachments:
+		#	if file.
+
+
 
 # Use this class to copy received message for a WebHook.
 # The original message is stored in a discord.py cache
@@ -467,7 +474,7 @@ class Bot(discord_bot.Client, SessionStore):
 		except asyncio.exceptions.CancelledError as e:
 			pass
 		# GeneratorExit
-
+		self.store_webhooks()
 		await self.close()
 	
 	async def on_ready(self):
@@ -479,10 +486,30 @@ class Bot(discord_bot.Client, SessionStore):
 		if self.use_webhooks:
 			await self.configure_webhooks()
 
+	# Store WebHooks tokens in session file
+	def store_webhooks(self):
+		for channel_id, hook in self.webhooks.items():
+			print(hook)
+			self.set_variable('webhooks', channel_id, 'token', hook.token)
+			self.set_variable('webhooks', channel_id, 'name', hook.name)
+
+	def retrieve_webhooks(self):
+		if 'webhooks' in self.session:
+			for channel_id in self.session['webhooks']:
+				token = self.get_variable('webhooks', channel_id, 'token')
+				name = self.get_variable('webhooks', channel_id, 'name')
+				hook = discord_bot.Webhook.from_url(
+					f'https://discord.com/api/webhooks/{channel_id}/{token}',
+					client = self)
+				hook.name = name
+				self.webhooks[channel_id] = hook
+
 	async def configure_webhooks(self):
+		self.retrieve_webhooks()
+		return
+
 		hook = await self.get_channel_webhook(1348821512911585381)
 		await hook.send('hahah!')
-		#return
 		for guild in self.guilds:
 			hooks = await guild.webhooks()
 			self.webhooks = { h.channel_id : h for h in hooks }
