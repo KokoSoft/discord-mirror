@@ -116,7 +116,38 @@ class Config:
 		self.history_depth = history_depth
 		self.discard_session = discard_session
 
-class Client(discord_user.Client):
+class SessionStore():
+	def __init__(self):
+		super().__init__()
+
+	def session_setup(self, session, key):
+		if key not in session:
+			session[key] = {}
+		self.session = session[key]
+
+	def get_variable(self, src, dst, name):
+		# Keys are stored as strings in json
+		src = str(src)
+		dst = str(dst)
+		d = self.session
+
+		if src not in d:
+			return None
+
+		d = d[src]
+		if dst not in d:
+			return None
+
+		return d[dst].get(name)
+
+	def set_variable(self, src, dst, name, value):
+		# Keys are stored as strings in json
+		src = str(src)
+		dst = str(dst)
+		self.session.setdefault(src, {}).setdefault(dst, {})[name] = value
+
+
+class Client(discord_user.Client, SessionStore):
 	def __init__(
 		self,
 		token : str,							# Discord account token
@@ -141,11 +172,7 @@ class Client(discord_user.Client):
 	
 	async def start(self, bot, session):
 		self.bot = bot
-
-		key = self.section_name
-		if key not in session:
-			session[key] = {}
-		self.session = session[key]
+		self.session_setup(session, self.section_name)
 
 		for cfg in self.config:
 			if cfg.discard_session and cfg.sources:
@@ -158,27 +185,6 @@ class Client(discord_user.Client):
 		except asyncio.exceptions.CancelledError:
 			self.on_ready_task.cancel()
 			await self.close()
-
-	def get_variable(self, src, dst, name):
-		# Keys are stored as strings in json
-		src = str(src)
-		dst = str(dst)
-		d = self.session
-
-		if src not in d:
-			return None
-
-		d = d[src]
-		if dst not in d:
-			return None
-
-		return d[dst].get(name)
-
-	def set_variable(self, src, dst, name, value):
-		# Keys are stored as strings in json
-		src = str(src)
-		dst = str(dst)
-		self.session.setdefault(src, {}).setdefault(dst, {})[name] = value
 
 	def get_last_msg_id(self, cfg, source):
 		start_from = 0	# 0 means no channels
@@ -384,23 +390,29 @@ class WebHookBot():
 			await channel.send(msg.content, embeds = msg.embeds, files = files)
 
 
-class Bot(discord_bot.Client):
+class Bot(discord_bot.Client, SessionStore):
 	def __init__(
 		self,
 		token : str,											# Discord bot token
 		list_channels : bool = False,							# Show channels list
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
+		section_name : str = None,								# Name of the section in session file
 		debug : bool = False,									# Disable connection
 	):
 		self.token = token
 		self.list_channels = list_channels
 		self.debug = debug
 
+		# Used as prefix in session file
+		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
+
 		intents = discord_bot.Intents.default()
 		#intents.message_content = True
 		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
 
-	async def start(self):
+	async def start(self, session):
+		self.session_setup(session, self.section_name)
+
 		try:
 			if not self.debug:
 				await super().start(self.token)
@@ -464,7 +476,7 @@ class BotRunner():
 
 		loop = asyncio.get_event_loop()
 		tasks = [loop.create_task(src.start(self.bot, session)) for src in self.sources]
-		tasks.append(loop.create_task(self.bot.start(), name='Bot connection'))
+		tasks.append(loop.create_task(self.bot.start(session), name='Bot connection'))
 
 		try:
 			loop.run_forever()
