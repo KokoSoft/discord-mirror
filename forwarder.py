@@ -121,6 +121,9 @@ class Config:
 		self.discard_session = discard_session
 
 class SessionStore():
+	def __init__(self):
+		super().__init__()
+
 	def session_setup(self, session, key):
 		if key not in session:
 			session[key] = {}
@@ -173,7 +176,7 @@ class Client(discord_user.Client, SessionStore):
 	
 	async def start(self, bot, session):
 		self.bot = bot
-		self.session = self.session_setup(session, self.section_name)
+		self.session_setup(session, self.section_name)
 
 		for cfg in self.config:
 			if cfg.discard_session and cfg.sources:
@@ -456,7 +459,7 @@ class Bot(discord_bot.Client, SessionStore):
 		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
 		
 	async def start(self, session):
-		self.session = self.session_setup(session, self.section_name)
+		self.session_setup(session, self.section_name)
 
 		try:
 			if not self.debug:
