@@ -395,15 +395,19 @@ class Bot(discord_bot.Client, SessionStore):
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
 		section_name : str = None,								# Name of the section in session file
 		debug : bool = False,									# Disable connection
+		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname and upload bigger files)
 	):
 		self.token = token
 		self.list_channels = list_channels
+		self.use_webhooks = use_webhooks
 		self.debug = debug
+		self.webhooks = {}
 
 		# Used as prefix in session file
 		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
 
 		intents = discord_bot.Intents.default()
+		intents.webhooks = use_webhooks
 		#intents.message_content = True
 		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
 		
@@ -424,6 +428,59 @@ class Bot(discord_bot.Client, SessionStore):
 
 		if self.list_channels:
 			print_channel_list(self)
+
+		if self.use_webhooks:
+			await self.configure_webhooks()
+
+	async def configure_webhooks(self):
+		hook = await self.get_channel_webhook(1348821512911585381)
+		await hook.send('hahah!')
+		#return
+		for guild in self.guilds:
+			hooks = await guild.webhooks()
+			self.webhooks = { h.channel_id : h for h in hooks }
+			'''
+			print(guild.name)
+			for channel in guild.channels:
+					if not (isinstance(channel, discord_bot.TextChannel) or \
+							isinstance(channel, discord_bot.VoiceChannel) or \
+							isinstance(channel, discord_bot.StageChannel) or \
+							isinstance(channel, discord_bot.ForumChannel)):
+						continue
+
+					print('	', channel.name)
+					hooks = await channel.webhooks()
+					print(hooks)
+					if not hooks:
+						print('No hooks!')
+						await channel.create_webhook(
+							name = "Content Mirror Bot",
+							reason = "Automatically created WebHook for the bot needs.")
+		#
+		hook = hooks[0]
+		print(hook.token, hook. name, hook.channel_id)
+		hook.session = LoggingClientSession()
+		await hook.send("Hello from bot!")'''
+
+	async def get_channel_webhook(self, channel_id : int):
+		if channel_id in self.webhooks:
+			return self.webhooks[channel_id]
+
+		channel = self.get_channel(channel_id)
+		if not channel:
+			return None
+
+		hooks = await channel.webhooks()
+		if hooks:
+			hook = hooks[0]
+		else:
+			print('create webhook')
+			hook = await channel.create_webhook(
+				name = "Content Mirror Bot",
+				reason = "Automatically created WebHook for the bot needs.")
+
+		self.webhooks[channel_id] = hook
+		return hook
 
 	async def clone_file(self, file):
 		f = await file.to_file()
