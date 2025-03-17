@@ -365,8 +365,6 @@ class WebHookChannel():
 				)
 
 				
-				#, username = f"user {i}")
-				#discord_webhook.DiscordWebhook()
 
 
 class WebHookBot():
@@ -383,6 +381,7 @@ class WebHookBot():
 		self.session = None
 		self.token = token
 		self.ready: asyncio.Event = asyncio.Event()
+		super().__init__()
 
 	def __del__(self):
 		print("Destructor called")
