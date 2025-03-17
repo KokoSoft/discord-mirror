@@ -66,22 +66,26 @@ class ParsedMessage:
 # The original message is stored in a discord.py cache
 class ParsedWebHookMessage:
 	def __init__(self,
-		message : discord_user.Message,
+		message : discord_user.Message | str,
 		username : str = None,
 		avatar_url : str = None,
 		allowed_mentions = None,
 	):
-		if isinstance(message, str):
+		if isinstance(message, discord_user.Message):
+			self.content = message.content
+			self.embeds = [ emb for emb in message.embeds if emb.type == 'rich' ]
+			self.attachments = list(message.attachments)
+			self.username = message.author.display_name
+			self.avatar_url = message.author.avatar.url if message.author.avatar else None
+		else:
+			#if isinstance(message, str):
 			self.content = message
 			self.embeds = []
 			self.attachments = []
-		else:
 			self.content = message.content
-			self.embeds = [emb for emb in message.embeds if emb.type != 'gifv' ]
-			self.attachments = list(message.attachments)
+			self.username = username
+			self.avatar_url = avatar_url
 
-		self.username = username
-		self.avatar_url = avatar_url
 		self.allowed_mentions = allowed_mentions
 
 Sendable = NewType('Sendable', Union[ParsedMessage, ParsedWebHookMessage, discord_user.Message])
@@ -307,49 +311,88 @@ class Client(discord_user.Client, SessionStore):
 import aiohttp
 from datetime import datetime
 
+async def on_request_start(session, context, params):
+	logging.getLogger('aiohttp.client').debug(f'Starting request <{params}>')
+
+class LoggingClientSession(aiohttp.ClientSession):
+	async def _request(self, method, url, **kwargs):
+		print('Starting request ', method, url, kwargs)
+		resp = await super()._request(method, url, **kwargs)
+		print('Response', resp)
+		return resp
+
 class WebHookChannel():
-	def __init__(
-		self,
-		id : int,
-		url : str,
-		token : str = None,
-	):
+	def __init__(self, id : int, url : str):
 		self.id = id
 		self.url = url
-		self.token = token
+
+	async def setup(self, session, token):
+		print('setup')
+		self.hook = discord_bot.Webhook.from_url(
+			self.url,
+			session = session,
+			bot_token = token)
+
+		if token:
+			print('fetch', self.hook.is_authenticated())
+			self.hook = await self.hook.fetch()
+		print('done', self.hook.is_authenticated())
 
 	async def send(self,
-		content : str,
+		content : ParsedWebHookMessage,
 		embeds = None,
 		files = None,
 	):
-			async with aiohttp.ClientSession() as session:
-				hook = discord_bot.Webhook.from_url(self.url, session = session, bot_token=self.token)
-				for i in range(1000):
-					await hook.send(content = content + datetime.now().strftime( '%Y-%m-%d %H:%M:%S'), username = f"user {i}")
-		#discord_webhook.DiscordWebhook()
+				#discord.errors.Forbidden: 403 Forbidden (error code: 50013): Missing Permissions
+			#for i in range(1000):
+				await self.hook.send(
+					content = content.content+ datetime.now().strftime( '%Y-%m-%d %H:%M:%S'),
+					embeds = content.embeds,
+					files = content.attachments,
+					allowed_mentions = content.allowed_mentions,
+					username = content.username,
+					avatar_url = content.avatar_url
+				)
+
+				
+				#, username = f"user {i}")
+				#discord_webhook.DiscordWebhook()
 
 
 class WebHookBot():
 	def __init__(
 		self,
-		channels_config : list[WebHookChannel] = [],	# Output channels configuration
+		channels_config : list[WebHookChannel] = [],			# Output channels configuration
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
+		token : str = None,										# Bot token to authorize WebHooks (optional, allows high rate)
 	):
 		self.channels_config = channels_config
 		self.allowed_mentions = allowed_mentions
-
+		#self.token = token
 		self.channels = { ch.id : ch for ch in channels_config }
-		
+		self.session = None
+		self.token = token
+		self.ready: asyncio.Event = asyncio.Event()
+
+	def __del__(self):
+		print("Destructor called")
+		if self.session:
+			self.session.close()
+
 	async def start(self):
-		# No task needed
-		pass
+		self.session = LoggingClientSession()
+
+		for ch in self.channels_config:
+			await ch.setup(self.session, self.token)
+
+		self.ready.set()
 
 	def is_ready(self):
-		return True
+		return self.ready is not None and self.ready.is_set()
 
 	async def wait_until_ready(self):
-		pass
+		if self.ready:
+			await self.ready.wait()
 
 	def get_channel(self, channel_id : int):
 		return self.channels[channel_id]
@@ -379,12 +422,13 @@ class WebHookBot():
 			msg.allowed_mentions = self.allowed_mentions
 
 		# API limits file size to 20MB
-		#files = [await self.clone_file(file) for file in msg.attachments if file.size <= 20*1024*1024]
+		msg.attachments = [await self.clone_file(file) for file in msg.attachments if file.size <= 20*1024*1024]
 		files = None
 
-		if msg.content or files or msg.embeds:
+		if msg.content or msg.attachments or msg.embeds:
+			#if isinstance(channelWebHookChannel
 			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
-			await channel.send(msg.content, embeds = msg.embeds, files = files)
+			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
 
 
 class Bot(discord_bot.Client, SessionStore):
