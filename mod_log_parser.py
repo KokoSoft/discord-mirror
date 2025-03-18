@@ -79,7 +79,7 @@ class ModLogParser:
 		emb = embed_obj.to_dict()
 		user_str = emb.get('description', self.get_value(emb, 'Użytkownik'))
 		emb['user'] = user = await self.get_user(user_str)
-		emb['mod'] = mod = await self.get_user(self.get_value(emb, 'Moderator'))
+		emb['mod'] = mod = await self.get_user(self.get_value(emb, ['Moderator', 'Mod']))
 
 		# Some embeds can have no fiels, eq. video
 		if 'fields' in emb:
