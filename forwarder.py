@@ -57,16 +57,15 @@ def is_async(obj):
 # Use this class to copy received message.
 # The original message is stored in a discord.py cache and its passed to on_message_delete 
 class ParsedMessage:
-	def __init__(self, message):
-		self.content = message.clean_content
+	def __init__(self,
+		message : discord_user.Message | str,
+	):
+		self.content = self.webhook_content = message.clean_content
 		self.embeds = [emb for emb in message.embeds if emb.type == 'rich' ]
 		self.attachments = list(message.attachments)
 		self.username = message.author.display_name
 		self.avatar_url = message.author.avatar.url if message.author.avatar else None
-		#self.require_webhook = False
-		#for file in self.attachments:
-		#	if file.
-
+		super().__init__()
 
 
 # Use this class to copy received message for a WebHook.
@@ -95,7 +94,7 @@ class ParsedWebHookMessage:
 
 		self.allowed_mentions = allowed_mentions
 
-Sendable = NewType('Sendable', Union[ParsedMessage, ParsedWebHookMessage, discord_user.Message])
+Sendable = NewType('Sendable', Union[ParsedMessage, discord_user.Message])
 SyncParserCallback = NewType('SyncParserCallback', Callable[[discord_user.message.Message], Sendable])
 AsyncParserCallback = NewType('AsyncParserCallback', Awaitable[[discord_user.Message], Sendable])
 ParserCallback = NewType('ParserCallback', Union[SyncParserCallback, AsyncParserCallback])
@@ -448,7 +447,7 @@ class Bot(discord_bot.Client, SessionStore):
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
 		section_name : str = None,								# Name of the section in session file
 		debug : bool = False,									# Disable connection
-		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname and upload bigger files)
+		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname)
 	):
 		self.token = token
 		self.list_channels = list_channels
@@ -483,7 +482,10 @@ class Bot(discord_bot.Client, SessionStore):
 			print_channel_list(self)
 
 		if self.use_webhooks:
-			await self.configure_webhooks()
+			if True:
+				self.retrieve_webhooks()
+			else:
+				await self.configure_webhooks()
 
 	# Store WebHooks tokens in session file
 	def store_webhooks(self):
@@ -503,17 +505,12 @@ class Bot(discord_bot.Client, SessionStore):
 				hook.name = name
 				self.webhooks[channel_id] = hook
 
-	async def configure_webhooks(self):
-		self.retrieve_webhooks()
-		return
-
-		hook = await self.get_channel_webhook(1348821512911585381)
-		await hook.send('hahah!')
+	# Fetch all WebHooks and optionally create a missing WebHooks
+	async def fetch_webhooks(self, install_all : bool = False):
 		for guild in self.guilds:
 			hooks = await guild.webhooks()
 			self.webhooks = { h.channel_id : h for h in hooks }
-			'''
-			print(guild.name)
+
 			for channel in guild.channels:
 					if not (isinstance(channel, discord_bot.TextChannel) or \
 							isinstance(channel, discord_bot.VoiceChannel) or \
@@ -521,19 +518,17 @@ class Bot(discord_bot.Client, SessionStore):
 							isinstance(channel, discord_bot.ForumChannel)):
 						continue
 
-					print('	', channel.name)
 					hooks = await channel.webhooks()
-					print(hooks)
-					if not hooks:
-						print('No hooks!')
-						await channel.create_webhook(
-							name = "Content Mirror Bot",
-							reason = "Automatically created WebHook for the bot needs.")
-		#
-		hook = hooks[0]
-		print(hook.token, hook. name, hook.channel_id)
-		hook.session = LoggingClientSession()
-		await hook.send("Hello from bot!")'''
+					if hooks:
+						hook = hooks[0]
+					else:
+						if install_all:
+							hook = await channel.create_webhook(
+								name = "Content Mirror Bot",
+								reason = "Automatically created WebHook for the bot needs.")
+						else:
+							continue
+					self.webhooks[channel.id] = hook
 
 	async def get_channel_webhook(self, channel_id : int):
 		if channel_id in self.webhooks:
