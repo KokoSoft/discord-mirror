@@ -485,12 +485,11 @@ class Bot(discord_bot.Client, SessionStore):
 			if True:
 				self.retrieve_webhooks()
 			else:
-				await self.configure_webhooks()
+				await self.configure_webhooks(install_all = True)
 
 	# Store WebHooks tokens in session file
 	def store_webhooks(self):
 		for channel_id, hook in self.webhooks.items():
-			print(hook)
 			self.set_variable('webhooks', channel_id, 'token', hook.token)
 			self.set_variable('webhooks', channel_id, 'name', hook.name)
 
@@ -506,10 +505,13 @@ class Bot(discord_bot.Client, SessionStore):
 				self.webhooks[channel_id] = hook
 
 	# Fetch all WebHooks and optionally create a missing WebHooks
-	async def fetch_webhooks(self, install_all : bool = False):
+	async def configure_webhooks(self, install_all : bool = False):
 		for guild in self.guilds:
+			if not install_all:
 			hooks = await guild.webhooks()
-			self.webhooks = { h.channel_id : h for h in hooks }
+				webhooks = { h.channel_id : h for h in hooks }
+				self.webhooks.update(webhooks)
+				continue
 
 			for channel in guild.channels:
 					if not (isinstance(channel, discord_bot.TextChannel) or \
@@ -522,13 +524,15 @@ class Bot(discord_bot.Client, SessionStore):
 					if hooks:
 						hook = hooks[0]
 					else:
-						if install_all:
+						print(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
 							hook = await channel.create_webhook(
 								name = "Content Mirror Bot",
 								reason = "Automatically created WebHook for the bot needs.")
-						else:
-							continue
 					self.webhooks[channel.id] = hook
+		print('WebHooks configured.')
+
+	async def on_webhooks_update(self, channel):
+		print(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
 
 	async def get_channel_webhook(self, channel_id : int):
 		if channel_id in self.webhooks:
