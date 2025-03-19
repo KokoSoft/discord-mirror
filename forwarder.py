@@ -87,33 +87,6 @@ class ParsedMessage:
 			self.username = message.author.display_name
 			self.avatar_url = message.author.avatar.url if message.author.avatar else None
 
-
-# Use this class to copy received message for a WebHook.
-# The original message is stored in a discord.py cache
-class ParsedWebHookMessage:
-	def __init__(self,
-		message : discord_user.Message | str,
-		username : str = None,
-		avatar_url : str = None,
-		allowed_mentions = None,
-	):
-		if isinstance(message, discord_user.Message):
-			self.content = message.content
-			self.embeds = [ emb for emb in message.embeds if emb.type == 'rich' ]
-			self.attachments = list(message.attachments)
-			self.username = message.author.display_name
-			self.avatar_url = message.author.avatar.url if message.author.avatar else None
-		else:
-			#if isinstance(message, str):
-			self.content = message
-			self.embeds = []
-			self.attachments = []
-			self.content = message.content
-			self.username = username
-			self.avatar_url = avatar_url
-
-		self.allowed_mentions = allowed_mentions
-
 Sendable = NewType('Sendable', Union[ParsedMessage, discord_user.Message])
 SyncParserCallback = NewType('SyncParserCallback',
 	Callable[[discord_user.Client, discord_user.message.Message], Sendable])
@@ -391,7 +364,7 @@ class WebHookChannel():
 		print('done', self.hook.is_authenticated())
 
 	async def send(self,
-		content : ParsedWebHookMessage,
+		content : ParsedMessage,
 		embeds = None,
 		files = None,
 	):
