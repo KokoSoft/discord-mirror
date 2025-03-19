@@ -62,9 +62,13 @@ class ParsedMessage:
 		self.attachments = list(message.attachments)
 
 
-Sendable = NewType('Sendable', Union[ParsedMessage, ParsedWebHookMessage, discord_user.Message])
-SyncParserCallback = NewType('SyncParserCallback', Callable[[discord_user.message.Message], Sendable])
-AsyncParserCallback = NewType('AsyncParserCallback', Awaitable[[discord_user.Message], Sendable])
+Sendable = NewType('Sendable', Union[ParsedMessage, discord_user.Message])
+SyncParserCallback = NewType('SyncParserCallback',
+	Callable[[discord_user.Client, discord_user.message.Message], Sendable])
+
+AsyncParserCallback = NewType('AsyncParserCallback',
+	Awaitable[[discord_user.Client, discord_user.Message], Sendable])
+
 ParserCallback = NewType('ParserCallback', Union[SyncParserCallback, AsyncParserCallback])
 
 class Config:
@@ -208,7 +212,8 @@ class Client(discord_user.Client, SessionStore):
 			# Pass message to parser if defined
 			parser = cfg.parser
 			if parser:
-				parsed_msg = await parser(message) if is_async(parser) else parser(message)
+				parsed_msg = await parser(self, message) if is_async(parser) \
+					else parser(self, message)
 				if not parsed_msg:
 					continue
 			else:
@@ -231,7 +236,8 @@ class Client(discord_user.Client, SessionStore):
 			# Pass message to parser if defined
 			parser = cfg.parser
 			if parser:
-				parsed_msg = await parser(message) if is_async(parser) else parser(message)
+				parsed_msg = await parser(self, message) if is_async(parser) \
+					else parser(self, message)
 				if not parsed_msg:
 					continue
 			else:
@@ -273,7 +279,8 @@ class Client(discord_user.Client, SessionStore):
 					# Pass message to parser if defined
 					parser = cfg.parser
 					if parser:
-						parsed_msg = await parser(msg) if is_async(parser) else parser(msg)
+						parsed_msg = await parser(self, msg) if is_async(parser) \
+							else parser(self, msg)
 						if not parsed_msg:
 							continue
 					else:
