@@ -298,39 +298,40 @@ class Client(discord_user.Client, SessionStore):
 
 	# Read message history from a channel
 	async def history_from(self, cfg, source):
-			last_id = self.get_last_msg_id(cfg, source)
+		last_id = self.get_last_msg_id(cfg, source)
 
-			# Skip history copying if no messages forwarded before OR no destination channels
-			if (not cfg.copy_history and last_id is None) or (last_id == 0):
-				return
+		# Skip history copying if no messages forwarded before OR no destination channels
+		if (not cfg.copy_history and last_id is None) or (last_id == 0):
+			return
 
-			src_ch = self.get_channel(source)
-			dst_list = [await self.bot.get_channel(dst) for dst in cfg.destinations]
-			prev = False
+		src_ch = self.get_channel(source)
+		dst_list = [await self.bot.get_channel(dst) for dst in cfg.destinations]
+		prev = False
 
-			while prev != last_id:
-				prev = last_id
-				after = cfg.history_depth if last_id is None else Snowflake(last_id)
+		while prev != last_id:
+			prev = last_id
+			after = cfg.history_depth if last_id is None else Snowflake(last_id)
 
-				async for msg in src_ch.history(after = after, oldest_first = True):
-					last_id = msg.id
+			async for msg in src_ch.history(after = after, oldest_first = True):
+				last_id = msg.id
 
-					# Pass message to parser if defined
-					parser = cfg.parser
-					if parser:
-						parsed_msg = await parser(self, msg) if is_async(parser) \
-							else parser(self, msg)
-						if not parsed_msg:
-							continue
-					else:
-						parsed_msg = msg
+				# Pass message to parser if defined
+				parser = cfg.parser
+				if parser:
+					parsed_msg = await parser(self, msg) if is_async(parser) \
+						else parser(self, msg)
+					if not parsed_msg:
+						continue
+				else:
+					parsed_msg = msg
 
-					for idx, dst_ch in enumerate(dst_list):
-						dst_id = cfg.destinations[idx]
-						msg_id = self.get_variable(source, dst_id, 'last_msg_id')
-						if last_id > (msg_id or 0):
-							await self.bot.forward(parsed_msg, dst_ch)
-							self.set_variable(source, dst_id, 'last_msg_id', last_id)
+				for idx, dst_ch in enumerate(dst_list):
+					dst_id = cfg.destinations[idx]
+					msg_id = self.get_variable(source, dst_id, 'last_msg_id')
+					if last_id > (msg_id or 0):
+						await self.bot.forward(parsed_msg, dst_ch)
+						self.set_variable(source, dst_id, 'last_msg_id', last_id)
+
 
 import aiohttp
 from datetime import datetime
