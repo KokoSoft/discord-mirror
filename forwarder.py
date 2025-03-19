@@ -651,15 +651,16 @@ class BotRunner():
 		bot,
 		sources : list[Config] = [],
 		session_file : str = "session.json",
+		log_level = discord_bot.utils.MISSING
 	):
 		self.bot = bot
 		self.sources = sources
 		self.session_file = session_file
 
 		discord_bot.utils.setup_logging(
-			handler=discord_bot.utils.MISSING,
-			formatter=discord_bot.utils.MISSING,
-			level=discord_bot.utils.MISSING
+			handler = discord_bot.utils.MISSING,
+			formatter = discord_bot.utils.MISSING,
+			level = log_level
 		)
 
 	def run(self):
