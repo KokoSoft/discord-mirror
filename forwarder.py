@@ -454,6 +454,7 @@ class WebHookBot():
 			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
 			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
 
+HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, discord_bot.StageChannel, discord_bot.ForumChannel]
 
 # Bot class
 class Bot(discord_bot.Client, SessionStore):
@@ -536,33 +537,32 @@ class Bot(discord_bot.Client, SessionStore):
 				continue
 
 			for channel in guild.channels:
-					if not (isinstance(channel, discord_bot.TextChannel) or \
-							isinstance(channel, discord_bot.VoiceChannel) or \
-							isinstance(channel, discord_bot.StageChannel) or \
-							isinstance(channel, discord_bot.ForumChannel)):
+					if not isinstance(channel, HookableChannel):
 						continue
 
 					hooks = await channel.webhooks()
-					if hooks:
-						hook = hooks[0]
-					else:
-						print(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
-							hook = await channel.create_webhook(
-								name = "Content Mirror Bot",
-								reason = "Automatically created WebHook for the bot needs.")
-					self.webhooks[channel.id] = hook
+					self.webhooks[channel.id] = hooks[0] if hooks \
+						else await self.create_webhook(channel)
+
 		print('WebHooks configured.')
 
 	# On WebHooks update
 	async def on_webhooks_update(self, channel):
 		print(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
 
+	# Create new WebHook
+	async def create_webhook(self, channel : HookableChannel):
+			print(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
+			return await channel.create_webhook(
+				name = "Content Mirror Bot",
+				reason = "Automatically created WebHook for the bot needs.")
+
 	# Get channel WebHook
 	async def get_channel_webhook(self, channel_id : int):
 		if channel_id in self.webhooks:
 			return self.webhooks[channel_id]
 
-		channel = self.get_channel(channel_id)
+		channel = super().get_channel(channel_id)
 		if not channel:
 			return None
 
@@ -570,10 +570,7 @@ class Bot(discord_bot.Client, SessionStore):
 		if hooks:
 			hook = hooks[0]
 		else:
-			print('create webhook')
-			hook = await channel.create_webhook(
-				name = "Content Mirror Bot",
-				reason = "Automatically created WebHook for the bot needs.")
+			hook = await self.create_webhook(channel)
 
 		self.webhooks[channel_id] = hook
 		return hook
