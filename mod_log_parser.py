@@ -1,7 +1,7 @@
 import copy
 from parsers import *
 import re
-import discord
+import discord as discord_bot
 
 class ModLogParser:
 	def __init__(self,
@@ -11,7 +11,7 @@ class ModLogParser:
 		self.users = {}
 		super().__init__()
 
-	def set_bot(self, bot : discord.Client):
+	def set_bot(self, bot : discord_bot.Client):
 		self.bot = bot
 
 	@staticmethod
@@ -75,7 +75,7 @@ class ModLogParser:
 		return result
 
 	# Get user and moderator profile
-	async def parse_embed(self, embed_obj : discord.Embed):
+	async def parse_embed(self, embed_obj : discord_bot.Embed):
 		emb = embed_obj.to_dict()
 		user_str = emb.get('description', self.get_value(emb, 'Użytkownik'))
 		emb['user'] = user = await self.get_user(user_str)
@@ -108,14 +108,14 @@ class ModLogParser:
 			entry['fields'].insert(idx, {'name' : 'User name', 'value': f"`{user['display_name']}`", 'inline': True})
 			entry['fields'].insert(idx + 1, {'name' : 'User login', 'value': f"`{user['name']}`", 'inline': True})
 
-		emb = discord.Embed.from_dict(entry)
+		emb = discord_bot.Embed.from_dict(entry)
 		if user:
 			emb.set_author(
 				name = f"{user['display_name']} (login: {user['name']})",
 				icon_url = user['display_avatar'])
 		return emb
 
-	async def __call__(self, message):
+	async def __call__(self, client, message):
 		msg = preserve_author(message)
 
 		file_entry = {	'id' : message.id,
