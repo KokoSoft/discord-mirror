@@ -1,0 +1,3 @@
+[submodule "discord_self"]
+	path = discord_self
+	url = https://github.com/KokoSoft/discord.py-self.git
