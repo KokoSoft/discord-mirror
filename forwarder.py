@@ -2,13 +2,14 @@ from typing import Sequence, Union, NewType
 from collections.abc import Callable, Awaitable
 import discord as discord_bot
 import discord_self.discord as discord_user
+from discord_self.discord.utils import escape_mentions
 import asyncio
 import json
 from hashlib import md5
 from functools import cmp_to_key
 from datetime import datetime
 import inspect
-
+import re
 #debug only
 import sys
 
@@ -332,6 +333,49 @@ class Client(discord_user.Client, SessionStore):
 						await self.bot.forward(parsed_msg, dst_ch)
 						self.set_variable(source, dst_id, 'last_msg_id', last_id)
 
+	# Clean message content
+	def clean_content(self, content : str) -> str:
+		""" Returns the content in a "cleaned up" manner. This basically means that
+		mentions are transformed into the way the client shows it. e.g. ``<#id>`` will
+		transform into ``#name``.
+
+		This will also transform @everyone and @here mentions into non-mentions.
+		"""
+
+		def resolve_member(id: int) -> str:
+			for guild in self.guilds:
+				m = guild.get_member(id)
+				if m:
+					return f'@{m.display_name}'
+			return '@deleted-user'
+
+		def resolve_role(id: int) -> str:
+			for guild in self.guilds:
+				r = guild.get_role(id)
+				if r:
+					return f'@{r.name}'
+			return '@deleted-role'
+
+		def resolve_channel(id: int) -> str:
+			c = self.get_channel(id)
+			return f'#{c.name}' if c else '#deleted-channel'
+
+		transforms = {
+			'@': resolve_member,
+			'@!': resolve_member,
+			'#': resolve_channel,
+			'@&': resolve_role,
+		}
+
+		def repl(match: re.Match) -> str:
+			type = match[1]
+			id = int(match[2])
+			transformed = transforms[type](id)
+			return transformed
+
+		result = re.sub(r'<(@[!&]?|#)([0-9]{15,20})>', repl, content)
+
+		return escape_mentions(result)
 
 import aiohttp
 from datetime import datetime
