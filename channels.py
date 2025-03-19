@@ -47,7 +47,8 @@ category     1082668333888974938 🌈Moderacja
 text         1319409686767997090 kubus-slodzius-mod
 text         1326985944179544128 regulamin-moderacyjny
 category     1169927742511394857 🌈GigaGeje🌈
-text         1172508867347886151 💭︱kulturka-vip
+text         1172508867347886151 💭︱kulturka-vip - usuniety
+text         1351674230017753088 💭︱kulturka-vip - nowy
 category     1082731989242761266 👑 Informacje
 text         1120731221085913098 📜︱regulamin
 text         1082668156461518868 📣︱ogłoszenia
@@ -62,7 +63,7 @@ text         1345749881335054336 umowione-babeczki
 text         1345749918140338270 juz-byly
 category     1079122293281787975 🌎 Kanały Tekstowe
 text         1303196845387943977 💭︱kulturka
-text         1330124289378095175 💭︱mniej-kulturki
+text         1330124289378095175 💭︱mniej-kulturki -> 🃏︱grota-hazardzisty
 text         1305912677222318082 🔞︱brak-kulturki
 text         1342986517777350740 🔞︱pokazy-zigiego-nsfw
 text         1305911252240826470 💭︱kiedy-kuba-pójdzie-siedzieć
@@ -71,6 +72,7 @@ text         1328551898927730780 gejsonowskie-ankiety
 text         1346141158178557962 opinie-o-telegramie
 text         1346201474891513878 discordowy-konkurs
 text         1337374657384546314 𝓿𝓲𝓿𝓲𝓳𝓮𝓼𝓸𝔀𝓷𝓲𝓪
+text         1350473161178611792 polityczne-konfrontacje (nowy)
 category     1330152816903196682 🎬 Strefa Ajemge1 🟣
 text         1117197015072379020 📹︱shoty
 text         1319763910471061545 ajemge1-shoty
@@ -88,8 +90,8 @@ text         1156274626167578677 🐱︱słodkie-kotki
 text         1330126476812619877 🦦︱słodkie-wydry
 text         1338821603894493256 słodkie-inne-zwierzątka
 category     1079122293281787976 🎸 Kanały Głosowe
-voice        1303196028144455700 🔊︱21:00 Oglądanie Szkolnej
-voice        1303196068812554240 🔊︱23:00 REKRUTACJA NA ADMINISTRATORA DC
+voice        1303196028144455700 🔊︱21:00 Oglądanie Szkolnej -> 🔊︱23 rekru wordle
+voice        1303196068812554240 🔊︱23:00 REKRUTACJA NA ADMINISTRATORA DC -> WŚCIEKŁE SUSŁY
 voice        1323062790608392232 🔊︱Samotnia PA3L i Sendej
 voice        1320219763665928232 🔊︱Zigi-Zabawy
 voice        1326462544398778442 🔊︱max 5
