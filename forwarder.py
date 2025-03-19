@@ -460,6 +460,8 @@ HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, disco
 class Bot(discord_bot.Client, SessionStore):
 	DEBUG_NO_SEND		= 1
 	DEBUG_NO_CONNECT	= 2
+	ATTACHMENT_SIZE_LIMIT = 8 * 1024 * 1024
+
 	def __init__(
 		self,
 		token : str,											# Discord bot token
@@ -597,13 +599,38 @@ class Bot(discord_bot.Client, SessionStore):
 		if isinstance(channel, int):
 			channel = await self.get_channel(channel)
 
-		# API limits file size to 8MB
-		files = [await self.clone_file(file) for file in msg.attachments if file.size <= 8*1024*1024]
-		
-		if msg.content or files or msg.embeds:
-			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
-			await ch.send(msg.content, embeds = msg.embeds, files = files)
+		# API limits file size. Send too big files as url
+		files = []
+		files_url = []
+		for file in message.attachments:
+			if file.size <= self.ATTACHMENT_SIZE_LIMIT:
+				files.append(await self.clone_file(file))
+			else:
+				files_url.append(file.url)
+		message.attachments = files
 
+		# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
+		content = message.content
+		if content or files or message.embeds:
+			await self.send(channel, message)
+
+		if files_url:
+			message.embeds = discord_bot.utils.MISSING
+			message.attachments = discord_bot.utils.MISSING
+			for url in files_url:
+				print('Too big', url)
+				message.content = message.webhook_content = url
+				await self.send(channel, message)
+
+	# Sends message via Bot connection or WebHook
+	async def send(self, channel, message):
+		if self.debug >= self.DEBUG_NO_SEND:
+			return
+
+			await channel.send(
+				message.content,
+				embeds = message.embeds,
+				files = message.attachments)
 
 # BotRunner class
 class BotRunner():
