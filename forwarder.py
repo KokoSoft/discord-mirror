@@ -71,6 +71,7 @@ AsyncParserCallback = NewType('AsyncParserCallback',
 
 ParserCallback = NewType('ParserCallback', Union[SyncParserCallback, AsyncParserCallback])
 
+# Config
 class Config:
 	def __init__(self,
 		sources : int | Sequence[int] | None = None,	# Source channels, None means any channel
@@ -98,7 +99,7 @@ class Config:
 		self.history_depth = history_depth
 		self.discard_session = discard_session
 
-
+# SessionStore class
 class SessionStore():
 	def __init__(self):
 		super().__init__()
@@ -129,7 +130,7 @@ class SessionStore():
 		dst = str(dst)
 		self.session.setdefault(src, {}).setdefault(dst, {})[name] = value
 
-
+# Client class
 class Client(discord_user.Client, SessionStore):
 	def __init__(
 		self,
@@ -169,6 +170,7 @@ class Client(discord_user.Client, SessionStore):
 			self.on_ready_task.cancel()
 			await self.close()
 
+	# Get last message id
 	def get_last_msg_id(self, cfg, source):
 		start_from = 0	# 0 means no channels
 
@@ -182,6 +184,7 @@ class Client(discord_user.Client, SessionStore):
 
 		return start_from
 
+	# On Client ready
 	async def on_ready(self):
 		self.on_ready_task = asyncio.current_task()
 		print('Logged on as', self.user)
@@ -198,6 +201,7 @@ class Client(discord_user.Client, SessionStore):
 		except GeneratorExit:
 			pass
 
+	# On message
 	async def on_message(self, message):
 		if not self.bot.is_ready():
 			return
@@ -223,6 +227,7 @@ class Client(discord_user.Client, SessionStore):
 				await self.bot.forward(parsed_msg, dst)
 				self.set_variable(channel_id, dst, 'last_msg_id', message.id)
 
+	# On message deleted
 	async def on_message_delete(self, message):
 		if not self.bot.is_ready():
 			return
@@ -246,6 +251,7 @@ class Client(discord_user.Client, SessionStore):
 			for dst in cfg.destinations:
 				await self.bot.forward(parsed_msg, dst)
 
+	# History thread
 	async def history(self):
 		await self.bot.wait_until_ready()
 
@@ -258,6 +264,7 @@ class Client(discord_user.Client, SessionStore):
 				self.forward_ready.append(src)
 				print(f"History from {src} synched")
 
+	# Read message history from a channel
 	async def history_from(self, cfg, source):
 			last_id = self.get_last_msg_id(cfg, source)
 
@@ -294,6 +301,7 @@ class Client(discord_user.Client, SessionStore):
 							self.set_variable(source, dst_id, 'last_msg_id', last_id)
 
 
+# Bot class
 class Bot(discord_bot.Client, SessionStore):
 	def __init__(
 		self,
@@ -314,6 +322,7 @@ class Bot(discord_bot.Client, SessionStore):
 		#intents.message_content = True
 		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
 
+	# Thread start
 	async def start(self, session):
 		self.session_setup(session, self.section_name)
 
@@ -326,12 +335,14 @@ class Bot(discord_bot.Client, SessionStore):
 
 		await self.close()
 
+	# On Bot ready
 	async def on_ready(self):
 		print('Bot logged on as', self.user)
 
 		if self.list_channels:
 			print_channel_list(self)
 
+	# Clone file object
 	async def clone_file(self, file):
 		f = await file.to_file()
 		# Casts discord-self.py File class to discord.py File
@@ -340,6 +351,7 @@ class Bot(discord_bot.Client, SessionStore):
 			description=f.description,
 			spoiler=f.spoiler)
 
+	# Send message
 	async def forward(self, msg, ch):
 		if not self.is_ready():
 			return
@@ -355,6 +367,7 @@ class Bot(discord_bot.Client, SessionStore):
 			await ch.send(msg.content, embeds = msg.embeds, files = files)
 
 
+# BotRunner class
 class BotRunner():
 	def __init__(self,
 		bot,
