@@ -672,12 +672,13 @@ class Bot(discord_bot.Client, SessionStore):
 		content = [message.content, message.webhook_content][isinstance(channel, discord_bot.Webhook)]
 		if content or files or message.embeds:
 			await self.send(channel, message)
+		elif not files_url:
+			print('You must not try to send a empty message!')
 
 		if files_url:
 			message.embeds = discord_bot.utils.MISSING
 			message.attachments = discord_bot.utils.MISSING
 			for url in files_url:
-				print('Too big', url)
 				message.content = message.webhook_content = url
 				await self.send(channel, message)
 
