@@ -311,7 +311,7 @@ class Client(discord_user.Client, SessionStore):
 			if (not cfg.copy_history and last_id is None) or (last_id == 0):
 				return
 
-			ch = self.get_channel(source)
+			src_ch = self.get_channel(source)
 			dst_list = [self.bot.get_channel(dst) for dst in cfg.destinations]
 			prev = False
 
@@ -319,7 +319,7 @@ class Client(discord_user.Client, SessionStore):
 				prev = last_id
 				after = cfg.history_depth if last_id is None else Snowflake(last_id)
 
-				async for msg in ch.history(after = after, oldest_first = True):
+				async for msg in src_ch.history(after = after, oldest_first = True):
 					last_id = msg.id
 
 					# Pass message to parser if defined
