@@ -163,11 +163,15 @@ class SessionStore():
 
 # Client class
 class Client(discord_user.Client, SessionStore):
+	DEBUG_NO_HISTORY	= 1
+	DEBUG_NO_RECV		= 2
+	DEBUG_NO_CONNECT	= 3
+
 	def __init__(
 		self,
 		token : str,							# Discord account token
 		config = [],							# Forward configuration
-		debug : bool = False,					# Disable connection
+		debug : bool = False,					# Debug level
 		list_channels : bool = False,			# Show channels list
 		presence : discord_user.Status = None,	# User presence to set
 		section_name : str = None				# Name of the section in session file
@@ -195,7 +199,7 @@ class Client(discord_user.Client, SessionStore):
 					self.session[str(src)] = {}
 
 		try:
-			if not self.debug:
+			if self.debug < self.DEBUG_NO_CONNECT:
 				await super().start(self.token)
 		except asyncio.exceptions.CancelledError:
 			self.on_ready_task.cancel()
@@ -234,7 +238,7 @@ class Client(discord_user.Client, SessionStore):
 
 	# On message
 	async def on_message(self, message):
-		if not self.bot.is_ready():
+		if not self.bot.is_ready() or self.debug >= self.DEBUG_NO_RECV:
 			return
 		
 		channel_id = message.channel.id
@@ -284,6 +288,9 @@ class Client(discord_user.Client, SessionStore):
 
 	# History thread
 	async def history(self):
+		if self.debug >= self.DEBUG_NO_HISTORY:
+			return
+
 		await self.bot.wait_until_ready()
 
 		for cfg in self.config:
@@ -456,13 +463,15 @@ class WebHookBot():
 
 # Bot class
 class Bot(discord_bot.Client, SessionStore):
+	DEBUG_NO_SEND		= 1
+	DEBUG_NO_CONNECT	= 2
 	def __init__(
 		self,
 		token : str,											# Discord bot token
 		list_channels : bool = False,							# Show channels list
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
 		section_name : str = None,								# Name of the section in session file
-		debug : bool = False,									# Disable connection
+		debug : int = 0,										# Debug level
 		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname)
 	):
 		self.token = token
@@ -484,7 +493,7 @@ class Bot(discord_bot.Client, SessionStore):
 		self.session_setup(session, self.section_name)
 
 		try:
-			if not self.debug:
+			if self.debug < self.DEBUG_NO_CONNECT:
 				await super().start(self.token)
 		except asyncio.exceptions.CancelledError as e:
 			pass
