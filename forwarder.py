@@ -65,7 +65,7 @@ class ParsedMessage:
 
 		self.content = self.webhook_content = None
 		self.embeds = discord_bot.utils.MISSING
-		self.attachments = discord_bot.utils.MISSING
+		self.attachments = []
 		self.username = None
 		self.avatar_url = None
 
@@ -85,8 +85,8 @@ class ParsedMessage:
 			author = message.author
 
 		if author:
-			self.username = message.author.display_name
-			self.avatar_url = message.author.avatar.url if message.author.avatar else None
+			self.username = author.name
+			self.avatar_url = author.avatar.url if author.avatar else None
 
 Sendable = NewType('Sendable', Union[ParsedMessage, discord_user.Message])
 SyncParserCallback = NewType('SyncParserCallback',
