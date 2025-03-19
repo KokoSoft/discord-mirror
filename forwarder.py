@@ -58,14 +58,34 @@ def is_async(obj):
 # The original message is stored in a discord.py cache and its passed to on_message_delete 
 class ParsedMessage:
 	def __init__(self,
-		message : discord_user.Message | str,
+		message : discord_user.Message | discord_user.MessageSnapshot | str,
 	):
-		self.content = self.webhook_content = message.clean_content
+		super().__init__()
+
+		self.content = self.webhook_content = None
+		self.embeds = discord_bot.utils.MISSING
+		self.attachments = discord_bot.utils.MISSING
+		self.username = None
+		self.avatar_url = None
+
+		if isinstance(message, str):
+			self.content = self.webhook_content = message
+			return
+
 		self.embeds = [emb for emb in message.embeds if emb.type == 'rich' ]
 		self.attachments = list(message.attachments)
-		self.username = message.author.display_name
-		self.avatar_url = message.author.avatar.url if message.author.avatar else None
-		super().__init__()
+
+		author = None
+		if isinstance(message, discord_user.MessageSnapshot):
+			self.content = self.webhook_content = message.content
+			author = message.cached_message.author if message.cached_message else None
+		else:
+			self.content = self.webhook_content = message.clean_content
+			author = message.author
+
+		if author:
+			self.username = message.author.display_name
+			self.avatar_url = message.author.avatar.url if message.author.avatar else None
 
 
 # Use this class to copy received message for a WebHook.
