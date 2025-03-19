@@ -1,4 +1,4 @@
-from typing import Sequence, Union, NewType
+from typing import Sequence, Union, List, NewType, AsyncGenerator, Generator
 from collections.abc import Callable, Awaitable
 import discord as discord_bot
 import discord_self.discord as discord_user
@@ -638,8 +638,8 @@ class Bot(discord_bot.Client, SessionStore):
 		else:
 			return super().get_channel(channel_id)
 
-	# Send message
-	async def forward(self, msg, ch):
+	# Forward message from Client
+	async def forward(self, message, channel):
 		if not self.is_ready() and \
 		   self.debug < self.DEBUG_NO_CONNECT and \
 		   not self.use_webhooks:
@@ -647,7 +647,17 @@ class Bot(discord_bot.Client, SessionStore):
 
 		if isinstance(channel, int):
 			channel = await self.get_channel(channel)
+			
+		if isinstance(message, AsyncGenerator):
+			async for msg in message:
+				await self._forward(msg, channel)
+		elif isinstance(message, Generator) or isinstance(message, List):
+			for msg in message:
+				await self._forward(msg, channel)
+		else:
+			await self._forward(message, channel)
 
+	async def _forward(self, message, channel):
 		# API limits file size. Send too big files as url
 		files = []
 		files_url = []
