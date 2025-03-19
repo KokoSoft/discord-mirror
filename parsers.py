@@ -1,8 +1,6 @@
-from forwarder import ParsedMessage
+from forwarder import ParsedMessage, Client
 import discord_self.discord as discord_user
 import discord as discord_bot
-too_big = False
-have_dejw = 0
 
 async def get_referenced_message(client : discord_user.Client,
 						   reference : discord_user.MessageReference):
@@ -14,69 +12,65 @@ async def get_referenced_message(client : discord_user.Client,
 		return await channel.fetch_message(reference.message_id)
 	except discord_user.errors.NotFound:
 		return None
+	#print(message.content, message.clean_content, message.embeds, message.attachments, message.type, message.reference)
+	# MessageType.reply
+	#if False and message.reference and message.type == discord_user.MessageType.default:
+	#	print(f"Reference ch: {message.reference.channel_id} id: {message.reference.message_id}")
+	#	m = await get_referenced_message(client, message.reference)
+	#	if m:
+	#		print('	ref msg:', m, m.author, m.author.name, m.author.display_name)
+	#	else:
+	#		print('	MISSING REF MESSAGE');
+	#return #None
 
-async def preserve_author(client, message):
-	global too_big
-	global have_dejw
-	#for m in message.mentions:
-	#		# Zawołani użytkownicy i ci na których wiadomośc odpowiedziano, global_name nie istnieje
-	#		print('mentions', m.name, m.display_name, m.id)
-
-	#for m in message.role_mentions:
-	#	print('role_mentions', m.name, m.id)
-	#
-	#for m in message.channel_mentions:
-	#	print('channel_mentions', m.name, m.id)
-	#if have_dejw > 3:
-	#	return None
+def preserve_author(client : Client , message : discord_user.Message):
+	if message.type == discord_user.MessageType.thread_created:
+		return
 
 	msg = ParsedMessage(message)
 	if len(msg.content) > 2000:
-		print('Content too long!')
-		return None
-
-	for f in msg.attachments:
-		if f.size >= 8*1024*1024:
-			too_big = True
-			break
-
-	dejw = msg.username == 'dejw'
-	#if too_big and dejw:
-	#	have_dejw += 1
-
-	#if not too_big or not dejw:
-	#	return None
+		print('Content too long!', message)
+		return
 
 	#if msg.content:
-	msg.content = f"**{message.author.display_name}**: {msg.content}"
-	msg.username = f'{msg.username} as {message.author.display_name}'
-	if len(msg.content) > 2000:
+	content = f"**{message.author.name}**: {msg.content}"
+	if len(msg.content) <= 2000:
 		msg.content = content
 
-	print(f"Message ch: {message.channel.id} id: {message.id}, name: {message.author.name}, dispaly: {message.author.display_name}")
-	for snap in message.message_snapshots:
-		snp = ParsedMessage(snap)
+	if message.type != discord_user.MessageType.default and message.type != discord_user.MessageType.reply:
+		print(f"Interesting message type {message.type}, ID: {message.id}, Content: {message.content}")
 
+	# Don't forward original message if it is reply
+	forwarded = False
+	if message.type == discord_user.MessageType.default:
+		for msg_snap in message.message_snapshots:
+			snap = ParsedMessage(msg_snap)
+			content = client.clean_content(msg_snap.content)
+			snap.webhook_content = content
+			snap.content = f"**{message.author.name}**: {content}"
+			if not msg_snap.cached_message:
+				snap.username = message.author.name
+				snap.avatar_url = message.author.avatar.url if message.author.avatar else None
 
-		print(f'Snap {snap.content}')
-		for e in snap.embeds:
-			print(f'Snap embed {e}')
-		for a in snap.attachments:
-			print(f'Snap attach {a}')
+			forwarded = True
+			yield snap
 			
+	if message.content or message.attachments or message.embeds:
+		yield msg
+	else:
+		if not forwarded and not message.stickers:
+			print('Empty message!', message)
+
+	# Forward stickers as urls
+	for sticker in message.stickers:
+		msg.content = sticker.url
+		msg.webhook_content = sticker.url
+		msg.embeds = discord_bot.utils.MISSING
+		msg.attachments = []
+		print(f'Sticker "{sticker.name}", id: {sticker.id}, url: {sticker.url}')
+		yield msg
 
 
-	#print(message.content, message.clean_content, message.embeds, message.attachments, message.type, message.reference)
-	# MessageType.reply
-	if False and message.reference and message.type == discord_user.MessageType.default:
-		print(f"Reference ch: {message.reference.channel_id} id: {message.reference.message_id}")
-		m = await get_referenced_message(client, message.reference)
-		if m:
-			print('	ref msg:', m, m.author, m.author.name, m.author.display_name)
-		else:
-			print('	MISSING REF MESSAGE');
-	return None
-	return msg
 
 def drop_embeds(client, message):
 	message.embeds = []
