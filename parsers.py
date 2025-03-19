@@ -1,6 +1,7 @@
 from forwarder import ParsedMessage
+import discord as discord_bot
 
-def preserve_author(message):
+def preserve_author(client, message):
 	#for m in message.mentions:
 	#		# Zawołani użytkownicy i ci na których wiadomośc odpowiedziano, global_name nie istnieje
 	#		print('mentions', m.name, m.display_name, m.id)
@@ -24,11 +25,11 @@ def preserve_author(message):
 
 	return msg
 
-def drop_embeds(message):
+def drop_embeds(client, message):
 	message.embeds = []
 	return message
 
-def delete_parser(message):
+def delete_parser(client, message):
 	msg = ParsedMessage(message)
 	content = message.clean_content
 	msg.content = f"*From* **{message.channel.name}** *deleted* **{message.author.display_name}** *message*:\n{message.content}"
@@ -36,8 +37,8 @@ def delete_parser(message):
 
 import discord
 
-def as_embed(msg):
-	emb = discord.Embed(description = msg.content, color = msg.author.colour.value)
+def as_embed(client, msg):
+	emb = discord_bot.Embed(description = msg.content, color = msg.author.colour.value)
 	emb.set_author(name = msg.author.display_name, icon_url = msg.author.display_avatar.url)
 	msg.embeds.insert(0, emb)
 	msg.content = None
