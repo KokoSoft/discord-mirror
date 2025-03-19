@@ -531,7 +531,7 @@ class Bot(discord_bot.Client, SessionStore):
 	async def configure_webhooks(self, install_all : bool = False):
 		for guild in self.guilds:
 			if not install_all:
-			hooks = await guild.webhooks()
+				hooks = await guild.webhooks()
 				webhooks = { h.channel_id : h for h in hooks }
 				self.webhooks.update(webhooks)
 				continue
@@ -585,12 +585,16 @@ class Bot(discord_bot.Client, SessionStore):
 
 	# Get channel
 	async def get_channel(self, channel_id : int):
+		if self.use_webhooks:
+			return await self.get_channel_webhook(channel_id)
+		else:
 			return super().get_channel(channel_id)
 
 	# Send message
 	async def forward(self, msg, ch):
 		if not self.is_ready() and \
-		   self.debug < self.DEBUG_NO_CONNECT:
+		   self.debug < self.DEBUG_NO_CONNECT and \
+		   not self.use_webhooks:
 			return
 
 		if isinstance(channel, int):
@@ -607,7 +611,7 @@ class Bot(discord_bot.Client, SessionStore):
 		message.attachments = files
 
 		# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
-		content = message.content
+		content = [message.content, message.webhook_content][isinstance(channel, discord_bot.Webhook)]
 		if content or files or message.embeds:
 			await self.send(channel, message)
 
@@ -624,6 +628,15 @@ class Bot(discord_bot.Client, SessionStore):
 		if self.debug >= self.DEBUG_NO_SEND:
 			return
 
+		if isinstance(channel, discord_bot.Webhook):
+			await channel.send(
+				content = message.webhook_content,
+				embeds = message.embeds,
+				files = message.attachments,
+				allowed_mentions = self.allowed_mentions,
+				username = message.username,
+				avatar_url = message.avatar_url)
+		else:
 			await channel.send(
 				message.content,
 				embeds = message.embeds,
