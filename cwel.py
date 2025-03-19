@@ -16,43 +16,44 @@ sources = [
 			parser = preserve_author,
 			copy_history = True,
 		),
-		#forwarder.Config(
-		#	sources = CHANNEL_ID_GEJ_SHOTY,
-		#	destinations = CHANNEL_ID_CWEL_SHOTY,
-		#	parser = preserve_author,
-		#	copy_history = True,
-		#),
+		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_SHOTY,
+			destinations = CHANNEL_ID_CWEL_SHOTY,
+			parser = preserve_author,
+			copy_history = True,
+		),
 		#forwarder.Config(
 		#	destinations = CHANNEL_ID_CWEL_UNCENSORED,
 		#	parser = delete_parser,
 		#	only_deleted = True
 		#),
 	], section_name = 'regular', presence = discord_user.Status.invisible),
-	#forwarder.Client(tokens.K, [	# @
-	#	forwarder.Config(
-	#		sources = CHANNEL_ID_GEJ_PODSUMOWANIE_STREAMOW,
-	#		destinations = CHANNEL_ID_CWEL_PODSUMOWANIE_STREAMOW,
-	#		copy_history = True,
-	#		parser = preserve_author,
-	#	),
-	#	forwarder.Config(
-	#		sources = CHANNEL_ID_GEJ_AJEMGE1_SHOTY,
-	#		destinations = CHANNEL_ID_CWEL_AJEMGE1_SHOTY,
-	#		parser = preserve_author,
-	#		copy_history = True,
-	#	),
-	#	forwarder.Config(
-	#		sources = CHANNEL_ID_GEJ_KRONIKA_KRAKOW,
-	#		destinations = CHANNEL_ID_CWEL_KRONIKA_KARKOW,
-	#		copy_history = True,
-	#	),
-	#	forwarder.Config(
-	#		sources = CHANNEL_ID_GEJ_MOD_LOG,
-	#		destinations = CHANNEL_ID_CWEL_MOD_LOG,
-	#		parser = mod_parser,
-	#		copy_history = True,
-	#	),
-	#], section_name = 'special', presence = discord_user.Status.invisible)
+	forwarder.Client(tokens.K, [	# @
+		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_PODSUMOWANIE_STREAMOW,
+			destinations = CHANNEL_ID_CWEL_PODSUMOWANIE_STREAMOW,
+			copy_history = True,
+			parser = preserve_author,
+		),
+		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_AJEMGE1_SHOTY,
+			destinations = CHANNEL_ID_CWEL_AJEMGE1_SHOTY,
+			parser = preserve_author,
+			copy_history = True,
+		),
+		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_KRONIKA_KRAKOW,
+			destinations = CHANNEL_ID_CWEL_KRONIKA_KARKOW,
+			parser = preserve_author,
+			copy_history = True,
+		),
+		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_MOD_LOG,
+			destinations = CHANNEL_ID_CWEL_MOD_LOG,
+			parser = mod_parser,
+			copy_history = True,
+		),
+	], section_name = 'special', presence = discord_user.Status.invisible)
 ]
 
 bot = forwarder.Bot(tokens.BOT2, section_name = 'bot',
