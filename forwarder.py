@@ -311,7 +311,7 @@ class Client(discord_user.Client, SessionStore):
 				return
 
 			src_ch = self.get_channel(source)
-			dst_list = [self.bot.get_channel(dst) for dst in cfg.destinations]
+			dst_list = [await self.bot.get_channel(dst) for dst in cfg.destinations]
 			prev = False
 
 			while prev != last_id:
@@ -424,7 +424,7 @@ class WebHookBot():
 		if self.ready:
 			await self.ready.wait()
 
-	def get_channel(self, channel_id : int):
+	async def get_channel(self, channel_id : int):
 		return self.channels[channel_id]
 
 	async def clone_file(self, file):
@@ -443,7 +443,7 @@ class WebHookBot():
 			raise TypeError("Invalid message object type.")
 
 		if isinstance(channel, int):
-			channel = self.get_channel(channel)
+			channel = await self.get_channel(channel)
 
 		if not isinstance(channel, WebHookChannel):
 			raise TypeError("Invalid channel object type.")
@@ -460,6 +460,7 @@ class WebHookBot():
 			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
 			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
 
+HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, discord_bot.StageChannel, discord_bot.ForumChannel]
 
 # Bot class
 class Bot(discord_bot.Client, SessionStore):
@@ -480,6 +481,8 @@ class Bot(discord_bot.Client, SessionStore):
 		self.debug = debug
 		self.webhooks = {}
 
+		self.attachment_size_limit = 8 * 1024 * 1024
+
 		# Used as prefix in session file
 		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
 
@@ -487,7 +490,7 @@ class Bot(discord_bot.Client, SessionStore):
 		intents.webhooks = use_webhooks
 		#intents.message_content = True
 		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
-		
+
 	# Thread start
 	async def start(self, session):
 		self.session_setup(session, self.section_name)
@@ -500,7 +503,7 @@ class Bot(discord_bot.Client, SessionStore):
 		# GeneratorExit
 		self.store_webhooks()
 		await self.close()
-	
+
 	# On Bot ready
 	async def on_ready(self):
 		print('Bot logged on as', self.user)
@@ -536,39 +539,38 @@ class Bot(discord_bot.Client, SessionStore):
 	async def configure_webhooks(self, install_all : bool = False):
 		for guild in self.guilds:
 			if not install_all:
-			hooks = await guild.webhooks()
+				hooks = await guild.webhooks()
 				webhooks = { h.channel_id : h for h in hooks }
 				self.webhooks.update(webhooks)
 				continue
 
 			for channel in guild.channels:
-					if not (isinstance(channel, discord_bot.TextChannel) or \
-							isinstance(channel, discord_bot.VoiceChannel) or \
-							isinstance(channel, discord_bot.StageChannel) or \
-							isinstance(channel, discord_bot.ForumChannel)):
+					if not isinstance(channel, HookableChannel):
 						continue
 
 					hooks = await channel.webhooks()
-					if hooks:
-						hook = hooks[0]
-					else:
-						print(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
-							hook = await channel.create_webhook(
-								name = "Content Mirror Bot",
-								reason = "Automatically created WebHook for the bot needs.")
-					self.webhooks[channel.id] = hook
+					self.webhooks[channel.id] = hooks[0] if hooks \
+						else await self.create_webhook(channel)
+
 		print('WebHooks configured.')
 
 	# On WebHooks update
 	async def on_webhooks_update(self, channel):
 		print(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
 
+	# Create new WebHook
+	async def create_webhook(self, channel : HookableChannel):
+			print(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
+			return await channel.create_webhook(
+				name = "Content Mirror Bot",
+				reason = "Automatically created WebHook for the bot needs.")
+
 	# Get channel WebHook
 	async def get_channel_webhook(self, channel_id : int):
 		if channel_id in self.webhooks:
 			return self.webhooks[channel_id]
 
-		channel = self.get_channel(channel_id)
+		channel = super().get_channel(channel_id)
 		if not channel:
 			return None
 
@@ -576,10 +578,7 @@ class Bot(discord_bot.Client, SessionStore):
 		if hooks:
 			hook = hooks[0]
 		else:
-			print('create webhook')
-			hook = await channel.create_webhook(
-				name = "Content Mirror Bot",
-				reason = "Automatically created WebHook for the bot needs.")
+			hook = await self.create_webhook(channel)
 
 		self.webhooks[channel_id] = hook
 		return hook
@@ -593,21 +592,64 @@ class Bot(discord_bot.Client, SessionStore):
 			description=f.description,
 			spoiler=f.spoiler)
 
+	# Get channel
+	async def get_channel(self, channel_id : int):
+		if self.use_webhooks:
+			return await self.get_channel_webhook(channel_id)
+		else:
+			return super().get_channel(channel_id)
+
 	# Send message
-	async def forward(self, msg, ch):
-		if not self.is_ready():
+	async def forward(self, message, channel):
+		if not self.is_ready() and \
+		   self.debug < self.DEBUG_NO_CONNECT and \
+		   not self.use_webhooks:
 			return
 
-		if isinstance(ch, int):
-			ch = self.get_channel(ch)
+		if isinstance(channel, int):
+			channel = await self.get_channel(channel)
 
-		# API limits file size to 8MB
-		files = [await self.clone_file(file) for file in msg.attachments if file.size <= 8*1024*1024]
-		
-		if msg.content or files or msg.embeds:
-			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
-			await ch.send(msg.content, embeds = msg.embeds, files = files)
+		# API limits file size. Send too big files as url
+		files = []
+		files_url = []
+		for file in message.attachments:
+			if file.size <= self.attachment_size_limit:
+				files.append(await self.clone_file(file))
+			else:
+				files_url.append(file.url)
+		message.attachments = files
 
+		# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
+		content = [message.content, message.webhook_content][isinstance(channel, discord_bot.Webhook)]
+		if content or files or message.embeds:
+			await self.send(channel, message)
+
+		if files_url:
+			message.embeds = discord_bot.utils.MISSING
+			message.attachments = discord_bot.utils.MISSING
+			for url in files_url:
+				print('Too big', url)
+				message.content = message.webhook_content = url
+				await self.send(channel, message)
+
+	# Sends message via Bot connection or WebHook
+	async def send(self, channel, message):
+		if self.debug >= self.DEBUG_NO_SEND:
+			return
+
+		if isinstance(channel, discord_bot.Webhook):
+			await channel.send(
+				content = message.webhook_content,
+				embeds = message.embeds,
+				files = message.attachments,
+				allowed_mentions = self.allowed_mentions,
+				username = message.username,
+				avatar_url = message.avatar_url)
+		else:
+			await channel.send(
+				message.content,
+				embeds = message.embeds,
+				files = message.attachments)
 
 # BotRunner class
 class BotRunner():
@@ -615,15 +657,16 @@ class BotRunner():
 		bot,
 		sources : list[Config] = [],
 		session_file : str = "session.json",
+		log_level = discord_bot.utils.MISSING
 	):
 		self.bot = bot
 		self.sources = sources
 		self.session_file = session_file
 
 		discord_bot.utils.setup_logging(
-			handler=discord_bot.utils.MISSING,
-			formatter=discord_bot.utils.MISSING,
-			level=discord_bot.utils.MISSING
+			handler = discord_bot.utils.MISSING,
+			formatter = discord_bot.utils.MISSING,
+			level = log_level
 		)
 
 	def run(self):
