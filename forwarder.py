@@ -305,7 +305,7 @@ class Client(discord_user.Client, SessionStore):
 				return
 
 			src_ch = self.get_channel(source)
-			dst_list = [self.bot.get_channel(dst) for dst in cfg.destinations]
+			dst_list = [await self.bot.get_channel(dst) for dst in cfg.destinations]
 			prev = False
 
 			while prev != last_id:
@@ -418,7 +418,7 @@ class WebHookBot():
 		if self.ready:
 			await self.ready.wait()
 
-	def get_channel(self, channel_id : int):
+	async def get_channel(self, channel_id : int):
 		return self.channels[channel_id]
 
 	async def clone_file(self, file):
@@ -437,7 +437,7 @@ class WebHookBot():
 			raise TypeError("Invalid message object type.")
 
 		if isinstance(channel, int):
-			channel = self.get_channel(channel)
+			channel = await self.get_channel(channel)
 
 		if not isinstance(channel, WebHookChannel):
 			raise TypeError("Invalid channel object type.")
@@ -584,14 +584,18 @@ class Bot(discord_bot.Client, SessionStore):
 			description=f.description,
 			spoiler=f.spoiler)
 
+	# Get channel
+	async def get_channel(self, channel_id : int):
+			return super().get_channel(channel_id)
+
 	# Send message
 	async def forward(self, msg, ch):
 		if not self.is_ready() and \
 		   self.debug < self.DEBUG_NO_CONNECT:
 			return
 
-		if isinstance(ch, int):
-			ch = self.get_channel(ch)
+		if isinstance(channel, int):
+			channel = await self.get_channel(channel)
 
 		# API limits file size to 8MB
 		files = [await self.clone_file(file) for file in msg.attachments if file.size <= 8*1024*1024]
