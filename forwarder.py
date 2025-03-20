@@ -427,7 +427,6 @@ class WebHookChannel():
 					avatar_url = content.avatar_url
 				)
 
-				
 
 # WebHookBot class
 class WebHookBot():
@@ -630,9 +629,9 @@ class Bot(discord_bot.Client, SessionStore):
 		f = await file.to_file()
 		# Casts discord-self.py File class to discord.py File
 		return discord_bot.File(f.fp,
-			filename=f.filename,
-			description=f.description,
-			spoiler=f.spoiler)
+			filename = f.filename,
+			description = f.description,
+			spoiler = f.spoiler)
 
 	# Get channel
 	async def get_channel(self, channel_id : int):
@@ -661,25 +660,43 @@ class Bot(discord_bot.Client, SessionStore):
 			await self._forward(message, channel)
 
 	async def _forward(self, message, channel):
-		# API limits file size. Send too big files as url
+		# API limits single file size and message attachments size.
+		# Split message atachments to stay in message size limit. Send too big files as url
+		# HTTPException: 413 Payload Too Large (error code: 40005): Request entity too large
 		files = []
+		files_part = []
 		files_url = []
+		sum = 0
 		for file in message.attachments:
-			if file.size <= self.ATTACHMENT_SIZE_LIMIT:
-				files.append(await self.clone_file(file))
-			else:
+			if file.size > self.ATTACHMENT_SIZE_LIMIT:
 				files_url.append(file.url)
-		message.attachments = files
+			else:
+				if sum + file.size > self.ATTACHMENT_SIZE_LIMIT:
+					files.append(files_part)
+					files_part = []
+					sum = 0
+
+				sum += file.size
+				files_part.append(await self.clone_file(file))
+		files.append(files_part)
+		message.attachments = files.pop(0)
 
 		# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
 		content = [message.content, message.webhook_content][isinstance(channel, discord_bot.Webhook)]
-		if content or files or message.embeds or message.poll:
+		if content or message.attachments or message.embeds or message.poll:
 			await self.send(channel, message)
 		elif not files_url:
 			print('You must not try to send a empty message!')
 
-		if files_url:
+		if files or files_url:
 			message.embeds = discord_bot.utils.MISSING
+			message.content = message.webhook_content = discord_bot.utils.MISSING
+			# Send the remaining attachment fragments
+			for files_part in files:
+				message.attachments = files_part
+				await self.send(channel, message)
+
+			# Send too big files as url
 			message.attachments = discord_bot.utils.MISSING
 			for url in files_url:
 				message.content = message.webhook_content = url
