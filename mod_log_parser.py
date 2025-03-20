@@ -116,9 +116,14 @@ class ModLogParser:
 		return emb
 
 	async def __call__(self, client, message):
-		msg = preserve_author(message)
+		cnt = 0
+		for msg in preserve_author(client, message):
+			yield await self.parse(client, message, msg, cnt)
+			cnt += 1
 
+	async def parse(self, client, message, msg, cnt):
 		file_entry = {	'id' : message.id,
+						'counter' : cnt,
 						'author' : {
 							'id' : message.author.id,
 							'name' : message.author.name
@@ -131,9 +136,6 @@ class ModLogParser:
 		embeds = []
 		file_embeds = []
 		for emb in msg.embeds:
-			if emb.type != 'rich':
-				continue
-
 			entry = await self.parse_embed(emb)
 			file_embeds.append(entry)
 			embeds.append(self.format_embed(entry))
