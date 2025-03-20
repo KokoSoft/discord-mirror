@@ -68,6 +68,7 @@ class ParsedMessage:
 		self.attachments = []
 		self.username = None
 		self.avatar_url = None
+		self.poll = None
 
 		if isinstance(message, str):
 			self.content = self.webhook_content = message
@@ -82,6 +83,7 @@ class ParsedMessage:
 			author = message.cached_message.author if message.cached_message else None
 		else:
 			self.content = self.webhook_content = message.clean_content
+			self.poll = message.poll
 			author = message.author
 
 		if author:
@@ -671,7 +673,7 @@ class Bot(discord_bot.Client, SessionStore):
 
 		# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
 		content = [message.content, message.webhook_content][isinstance(channel, discord_bot.Webhook)]
-		if content or files or message.embeds:
+		if content or files or message.embeds or message.poll:
 			await self.send(channel, message)
 		elif not files_url:
 			print('You must not try to send a empty message!')
@@ -695,12 +697,14 @@ class Bot(discord_bot.Client, SessionStore):
 				files = message.attachments,
 				allowed_mentions = self.allowed_mentions,
 				username = message.username,
-				avatar_url = message.avatar_url)
+				avatar_url = message.avatar_url,
+				poll = message.poll)
 		else:
 			await channel.send(
 				message.content,
 				embeds = message.embeds,
-				files = message.attachments)
+				files = message.attachments,
+				poll = message.poll)
 
 # BotRunner class
 class BotRunner():

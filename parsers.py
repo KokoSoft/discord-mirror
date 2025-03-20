@@ -55,7 +55,7 @@ def preserve_author(client : Client , message : discord_user.Message):
 			forwarded = True
 			yield snap
 			
-	if message.content or message.attachments or message.embeds:
+	if message.content or message.attachments or message.embeds or message.poll:
 		yield msg
 	else:
 		if not forwarded and not message.stickers:
