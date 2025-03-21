@@ -1,6 +1,8 @@
 from forwarder import ParsedMessage, Client
 import discord_self.discord as discord_user
 import discord as discord_bot
+import logging
+logger = logging.getLogger(__name__)
 
 async def get_referenced_message(client : discord_user.Client,
 						   reference : discord_user.MessageReference):
@@ -28,7 +30,7 @@ def is_spam(message, allow_bot : bool = False):
 	if message.author.bot and not allow_bot or \
 		'discord.gg/'.casefold() in content or \
 		'1178301953718095943'.casefold() in content:
-		print(f"Spam! '{content}' app: {message.application_id} hook: {message.webhook_id} bot: {message.author.bot}")
+		logger.info(f"Spam! '{content}' app: {message.application_id} hook: {message.webhook_id} bot: {message.author.bot}")
 		return True
 	return False
 
@@ -41,7 +43,7 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 
 	msg = ParsedMessage(message)
 	if len(msg.content) > 2000:
-		print('Content too long!', message)
+		logger.warning('Content too long!', message)
 		return
 
 	#if msg.content:
@@ -50,7 +52,7 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 		msg.content = content
 
 	if message.type != discord_user.MessageType.default and message.type != discord_user.MessageType.reply:
-		print(f"Interesting message type {message.type}, ID: {message.id}, Content: {message.content}")
+		logger.warning(f"Interesting message type {message.type}, ID: {message.id}, Content: {message.content}")
 
 	# Don't forward original message if it is reply
 	forwarded = False
@@ -71,7 +73,7 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 		yield msg
 	else:
 		if not forwarded and not message.stickers:
-			print('Empty message!', message)
+			logger.error('Empty message!', message)
 
 	# Forward stickers as urls
 	for sticker in message.stickers:
@@ -79,7 +81,7 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 		msg.webhook_content = sticker.url
 		msg.embeds = discord_bot.utils.MISSING
 		msg.attachments = []
-		print(f'Sticker "{sticker.name}", id: {sticker.id}, url: {sticker.url}')
+		logger.info(f'Sticker "{sticker.name}", id: {sticker.id}, url: {sticker.url}')
 		yield msg
 
 
@@ -119,7 +121,7 @@ def delete_parser_tmp(client, message):
 	username = f"{user}     {channel}     {timestamp}"
 	message.embeds = []
 
-	print(user, channel, content)
+	logger.info(user, channel, content)
 	for msg in preserve_author(client, message, True):
 		msg.username = username
 		msg.content = content

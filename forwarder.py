@@ -8,10 +8,9 @@ import json
 from hashlib import md5
 from functools import cmp_to_key
 from datetime import datetime
-import inspect
 import re
-#debug only
-import sys
+import logging
+logger = logging.getLogger(__name__)
 
 class Snowflake:
 	def __init__(self, id):
@@ -219,7 +218,7 @@ class Client(discord_user.Client, SessionStore):
 	# On Client ready
 	async def on_ready(self):
 		self.on_ready_task = asyncio.current_task()
-		print('Logged on as', self.user)
+		logger.info(f'Logged on as {self.user}')
 
 		try:
 			# Set user presence
@@ -297,7 +296,7 @@ class Client(discord_user.Client, SessionStore):
 				if get_history:
 					await self.history_from(cfg, src)
 				self.forward_ready.append(src)
-				print(f"History from {src} synched")
+				logger.info(f"History from {src} synched")
 
 	# Read message history from a channel
 	async def history_from(self, cfg, source):
@@ -335,7 +334,7 @@ class Client(discord_user.Client, SessionStore):
 						await self.bot.forward(parsed_msg, dst_ch)
 						self.set_variable(source, dst_id, 'last_msg_id', last_id)
 			if last_id:
-				print(f'{source}: History pos',
+				logger.info(f'{source}: History pos ' +
 					discord_user.utils.snowflake_time(last_id).strftime('%Y-%m-%d %H:%M:%S'))
 
 	# Clean message content
@@ -400,7 +399,7 @@ class WebHookBot():
 		super().__init__()
 
 	def __del__(self):
-		print("Destructor called")
+		logger.warning("Destructor called")
 		if self.session:
 			self.session.close()
 
@@ -501,7 +500,7 @@ class Bot(discord_bot.Client, SessionStore):
 
 	# On Bot ready
 	async def on_ready(self):
-		print('Bot logged on as', self.user)
+		logger.info(f'Bot logged on as {self.user}')
 
 		if self.list_channels:
 			print_channel_list(self)
@@ -546,14 +545,14 @@ class Bot(discord_bot.Client, SessionStore):
 					self.webhooks[channel.id] = hooks[0] if hooks \
 						else await self.create_webhook(channel)
 
-		print('WebHooks configured.')
+		logger.info('WebHooks configured.')
 
 	async def on_webhooks_update(self, channel):
-		print(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
+		logger.info(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
 
 	# Create new WebHook
 	async def create_webhook(self, channel : HookableChannel):
-			print(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
+			logger.info(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
 			return await channel.create_webhook(
 				name = "Content Mirror Bot",
 				reason = "Automatically created WebHook for the bot needs.")
@@ -640,7 +639,7 @@ class Bot(discord_bot.Client, SessionStore):
 		if content or message.attachments or message.embeds or message.poll:
 			await self.send(channel, message)
 		elif not files_url:
-			print('You must not try to send a empty message!')
+			logger.error('You must not try to send a empty message!')
 
 		if files or files_url:
 			message.embeds = discord_bot.utils.MISSING
@@ -714,7 +713,7 @@ class BotRunner():
 				task.cancel()
 
 		finally:
-			print('Closing...')
+			logger.info('Closing...')
 			for task in tasks:
 				loop.run_until_complete(task)
 
