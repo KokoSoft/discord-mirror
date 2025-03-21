@@ -382,59 +382,11 @@ class Client(discord_user.Client, SessionStore):
 
 		return escape_mentions(result)
 
-import aiohttp
-from datetime import datetime
-
-async def on_request_start(session, context, params):
-	logging.getLogger('aiohttp.client').debug(f'Starting request <{params}>')
-
-class LoggingClientSession(aiohttp.ClientSession):
-	async def _request(self, method, url, **kwargs):
-		print('Starting request ', method, url, kwargs)
-		resp = await super()._request(method, url, **kwargs)
-		print('Response', resp)
-		return resp
-
-# WebHookChannel class
-class WebHookChannel():
-	def __init__(self, id : int, url : str):
-		self.id = id
-		self.url = url
-
-	async def setup(self, session, token):
-		print('setup')
-		self.hook = discord_bot.Webhook.from_url(
-			self.url,
-			session = session,
-			bot_token = token)
-
-		if token:
-			print('fetch', self.hook.is_authenticated())
-			self.hook = await self.hook.fetch()
-		print('done', self.hook.is_authenticated())
-
-	async def send(self,
-		content : ParsedMessage,
-		embeds = None,
-		files = None,
-	):
-				#discord.errors.Forbidden: 403 Forbidden (error code: 50013): Missing Permissions
-			#for i in range(1000):
-				await self.hook.send(
-					content = content.content+ datetime.now().strftime( '%Y-%m-%d %H:%M:%S'),
-					embeds = content.embeds,
-					files = content.attachments,
-					allowed_mentions = content.allowed_mentions,
-					username = content.username,
-					avatar_url = content.avatar_url
-				)
-
-
 # WebHookBot class
 class WebHookBot():
 	def __init__(
 		self,
-		channels_config : list[WebHookChannel] = [],			# Output channels configuration
+		channels_config = [],			# Output channels configuration
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
 		token : str = None,										# Bot token to authorize WebHooks (optional, allows high rate)
 	):
