@@ -22,11 +22,11 @@ sources = [
 			parser = preserve_author,
 			copy_history = True,
 		),
-		#forwarder.Config(
-		#	destinations = CHANNEL_ID_CWEL_UNCENSORED,
-		#	parser = delete_parser,
-		#	only_deleted = True
-		#),
+		forwarder.Config(
+			destinations = CHANNEL_ID_CWEL_UNCENSORED,
+			parser = delete_parser,
+			only_deleted = True
+		),
 	], section_name = 'regular', presence = discord_user.Status.invisible),
 	forwarder.Client(tokens.K, [	# @
 		forwarder.Config(
