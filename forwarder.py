@@ -459,9 +459,9 @@ HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, disco
 
 # Bot class
 class Bot(discord_bot.Client, SessionStore):
-	DEBUG_NO_SEND		= 1
-	DEBUG_NO_CONNECT	= 2
-	ATTACHMENT_SIZE_LIMIT = 8 * 1024 * 1024
+	DEBUG_NO_SEND			= 1
+	DEBUG_NO_CONNECT		= 2
+	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
 
 	def __init__(
 		self,
@@ -588,8 +588,10 @@ class Bot(discord_bot.Client, SessionStore):
 			spoiler = f.spoiler)
 
 	# Get channel
-	async def get_channel(self, channel_id : int):
-		if self.use_webhooks:
+	async def get_channel(self, channel_id : int, webhook : bool = None):
+		if webhook is None:
+			webhook = self.use_webhooks
+		if webhook:
 			return await self.get_channel_webhook(channel_id)
 		else:
 			return super().get_channel(channel_id)
