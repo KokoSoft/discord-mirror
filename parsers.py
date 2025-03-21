@@ -83,17 +83,22 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 		yield msg
 
 
-
-def drop_embeds(client, message):
-	message.embeds = []
-	return message
+def delete_parser_emb(client, message):
+	for msg in preserve_author(client, message):
+		embed = discord_user.Embed(
+			description = f'Usunięto z: {message.channel.name}',
+			timestamp = message.created_at).set_footer(text = 'Wysłano')
+		msg.embeds.append(embed)
+		yield msg
 
 def delete_parser(client, message):
-	msg = ParsedMessage(message)
-	content = message.clean_content
-	msg.content = f"*From* **{message.channel.name}** *deleted* **{message.author.display_name}** *message*:\n{message.content}"
-	return msg
+	timestamp = message.created_at.strftime('%Y-%m-%d %H:%M:%S')
+	username = f"{message.author.name}     {message.channel.name}     {timestamp}"
 
+	for msg in preserve_author(client, message):
+		msg.username = username
+		msg.content = f"**{message.author.name}** on **{message.channel.name}** at {timestamp} *deleted message*:\n{message.content}"
+		yield msg
 
 def as_embed(client, msg):
 	emb = discord_bot.Embed(description = msg.content, color = msg.author.colour.value)
@@ -101,3 +106,25 @@ def as_embed(client, msg):
 	msg.embeds.insert(0, emb)
 	msg.content = None
 	return msg
+
+import re
+
+def delete_parser_tmp(client, message):
+	header, _, content = message.content.partition(':\n')
+	f = re.findall(r'\*\*(.*?)\*\*', header)
+	channel = f[0]
+	user = f[1]
+	
+	timestamp = message.created_at.strftime('%Y-%m-%d %H:%M:%S')
+	username = f"{user}     {channel}     {timestamp}"
+	message.embeds = []
+
+	print(user, channel, content)
+	for msg in preserve_author(client, message, True):
+		msg.username = username
+		msg.content = content
+		msg.webhook_content = content
+		yield msg
+
+
+	return None
