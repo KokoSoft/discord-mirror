@@ -334,7 +334,9 @@ class Client(discord_user.Client, SessionStore):
 					if last_id > (msg_id or 0):
 						await self.bot.forward(parsed_msg, dst_ch)
 						self.set_variable(source, dst_id, 'last_msg_id', last_id)
-			print(f'{source}: History pos ', discord_bot.utils.snowflake_time(last_id).strftime('%Y-%m-%d %H:%M:%S'))
+			if last_id:
+				print(f'{source}: History pos',
+					discord_user.utils.snowflake_time(last_id).strftime('%Y-%m-%d %H:%M:%S'))
 
 	# Clean message content
 	def clean_content(self, content : str) -> str:
