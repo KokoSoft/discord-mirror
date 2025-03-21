@@ -117,7 +117,7 @@ class ModLogParser:
 
 	async def __call__(self, client, message):
 		cnt = 0
-		for msg in preserve_author(client, message):
+		for msg in preserve_author(client, message, True):
 			yield await self.parse(client, message, msg, cnt)
 			cnt += 1
 

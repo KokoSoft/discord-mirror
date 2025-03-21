@@ -23,8 +23,20 @@ async def get_referenced_message(client : discord_user.Client,
 	#		print('	MISSING REF MESSAGE');
 	#return #None
 
-def preserve_author(client : Client , message : discord_user.Message):
-	if message.type == discord_user.MessageType.thread_created:
+def is_spam(message, allow_bot : bool = False):
+	content = message.content.casefold()
+	if message.author.bot and not allow_bot or \
+		'discord.gg/'.casefold() in content or \
+		'1178301953718095943'.casefold() in content:
+		print(f"Spam! '{content}' app: {message.application_id} hook: {message.webhook_id} bot: {message.author.bot}")
+		return True
+	return False
+
+def preserve_author(client : Client, message : discord_user.Message, allow_bot : bool = False):
+	if message.type in [discord_user.MessageType.thread_created,
+						discord_user.MessageType.member_join,
+						discord_user.MessageType.poll_result] or \
+	   is_spam(message, allow_bot):
 		return
 
 	msg = ParsedMessage(message)
