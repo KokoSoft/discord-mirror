@@ -218,7 +218,7 @@ class Client(discord_user.Client, SessionStore):
 	# On Client ready
 	async def on_ready(self):
 		self.on_ready_task = asyncio.current_task()
-		logger.info(f'Logged on as {self.user}')
+		logger.info(f'{self.section_name} user logged')
 
 		try:
 			# Set user presence
