@@ -471,11 +471,13 @@ class Bot(discord_bot.Client, SessionStore):
 		section_name : str = None,								# Name of the section in session file
 		debug : bool = False,									# Disable connection
 		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname)
+		dump_webhooks : bool = False,							# Dump all configured WebHooks
 		preconfigure_webhooks : bool = False,					# Add WebHooks to all channels
 	):
 		self.token = token
 		self.list_channels = list_channels
 		self.use_webhooks = use_webhooks
+		self.dump_webhooks = dump_webhooks
 		self.preconfigure_webhooks = preconfigure_webhooks
 		self.debug = debug
 		self.webhooks = {}
@@ -513,7 +515,7 @@ class Bot(discord_bot.Client, SessionStore):
 			print_channel_list(self)
 
 		if self.use_webhooks:
-			if self.preconfigure_webhooks:
+			if self.dump_webhooks or self.preconfigure_webhooks:
 				await self.configure_webhooks(install_all = self.preconfigure_webhooks)
 
 	# Store WebHooks in session file
@@ -545,11 +547,27 @@ class Bot(discord_bot.Client, SessionStore):
 		else:
 			logger.debug('No WebHooks in session')
 
+	# Dump WebHook to session file
+	def dump_webhook(self, hook : discord_bot.Webhook):
+		id = hook.id
+		self.set_variable('webhooks-dump', id, 'name', hook.name)
+		if hook.avatar:
+			self.set_variable('webhooks-dump', id, 'avatar', hook.avatar.url)
+		self.set_variable('webhooks-dump', id, 'channel_id', hook.channel_id)
+		self.set_variable('webhooks-dump', id, 'guild_id', hook.guild_id)
+		self.set_variable('webhooks-dump', id, 'url', hook.url)
+		self.set_variable('webhooks-dump', id, 'user_id', hook.user.id)
+		self.set_variable('webhooks-dump', id, 'username', hook.user.name)
+
 	# Fetch all WebHooks and optionally create a missing WebHooks
 	async def configure_webhooks(self, install_all : bool = False):
 		logger.debug('Configuring WebHooks...')
 		for guild in self.guilds:
 			hooks = await guild.webhooks()
+
+			if self.dump_webhooks:
+				for h in hooks:
+					self.dump_webhook(h)
 
 			bot_webhooks = { h.channel_id : h for h in hooks if h.name == self.WEBHOOK_NAME }
 			self.webhooks.update(bot_webhooks)
