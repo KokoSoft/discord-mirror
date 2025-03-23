@@ -4,8 +4,16 @@ import forwarder
 import tokens
 from channels import *
 from parsers import preserve_author, delete_parser
+from logging import handlers
+import logging
 from mod_log_parser import ModLogParser
-	
+
+logger = logging.getLogger()
+udp_handler = logging.handlers.DatagramHandler('127.0.0.1', tokens.LOGGER_PORT)
+
+logger.setLevel(logging.INFO)
+logger.addHandler(udp_handler)
+
 mod_parser = ModLogParser('mod_cwel.log')
 
 sources = [
