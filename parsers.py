@@ -25,12 +25,22 @@ async def get_referenced_message(client : discord_user.Client,
 	#		print('	MISSING REF MESSAGE');
 	#return #None
 
+spam_words = [
+	'discord.gg/'.casefold(),
+	'iceblaster'.casefold(),
+	'ice blaster'.casefold(),
+	'birb'.casefold(),
+	'bird'.casefold(),
+	'1346951803195101255',		# IceBlaster
+	'1178301953718095943',		# Birb
+]
+spam_list = [ str.casefold(w) for w in spam_words ]
+
 def is_spam(message, allow_bot : bool = False):
 	content = message.content.casefold()
 	if message.author.bot and not allow_bot or \
-		'discord.gg/'.casefold() in content or \
-		'1178301953718095943'.casefold() in content:
-		logger.info(f"Spam! '{content}' app: {message.application_id} hook: {message.webhook_id} bot: {message.author.bot}")
+		any(word in content for word in spam_list):
+		logger.info(f"Spam! {message.author.name}: '{content}' on '{message.channel.name}' app: {message.application_id} hook: {message.webhook_id} bot: {message.author.bot}")
 		return True
 	return False
 
