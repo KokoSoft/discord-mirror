@@ -461,6 +461,7 @@ class Bot(discord_bot.Client, SessionStore):
 	DEBUG_NO_SEND			= 1
 	DEBUG_NO_CONNECT		= 2
 	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
+	WEBHOOK_NAME			= "Content Mirror Bot"
 
 	def __init__(
 		self,
@@ -470,10 +471,12 @@ class Bot(discord_bot.Client, SessionStore):
 		section_name : str = None,								# Name of the section in session file
 		debug : int = 0,										# Debug level
 		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname)
+		preconfigure_webhooks : bool = False,					# Add WebHooks to all channels
 	):
 		self.token = token
 		self.list_channels = list_channels
 		self.use_webhooks = use_webhooks
+		self.preconfigure_webhooks = preconfigure_webhooks
 		self.debug = debug
 		self.webhooks = {}
 
@@ -498,6 +501,10 @@ class Bot(discord_bot.Client, SessionStore):
 		self.store_webhooks()
 		await self.close()
 
+	# On Bot Setup
+	async def setup_hook(self):
+		self.retrieve_webhooks()
+
 	# On Bot ready
 	async def on_ready(self):
 		logger.info(f'Bot logged on as {self.user}')
@@ -506,45 +513,54 @@ class Bot(discord_bot.Client, SessionStore):
 			print_channel_list(self)
 
 		if self.use_webhooks:
-			if True:
-				self.retrieve_webhooks()
-			else:
-				await self.configure_webhooks(install_all = True)
+			if self.preconfigure_webhooks:
+				await self.configure_webhooks(install_all = self.preconfigure_webhooks)
 
-	# Store WebHooks tokens in session file
+	# Store WebHooks in session file
 	def store_webhooks(self):
+		if not self.use_webhooks:
+			return
+
+		logger.debug('Storing WebHooks...')
 		for channel_id, hook in self.webhooks.items():
-			self.set_variable('webhooks', channel_id, 'token', hook.token)
 			self.set_variable('webhooks', channel_id, 'name', hook.name)
+			self.set_variable('webhooks', channel_id, 'url', hook.url)
 
 	# Load WebHooks from session file
 	def retrieve_webhooks(self):
+		if not self.use_webhooks:
+			return
+
+		logger.debug('Retrieving WebHooks...')
+
 		if 'webhooks' in self.session:
 			for channel_id in self.session['webhooks']:
-				token = self.get_variable('webhooks', channel_id, 'token')
+				channel_id = int(channel_id)
 				name = self.get_variable('webhooks', channel_id, 'name')
-				hook = discord_bot.Webhook.from_url(
-					f'https://discord.com/api/webhooks/{channel_id}/{token}',
-					client = self)
+				url = self.get_variable('webhooks', channel_id, 'url')
+				logger.debug(f'Webhook from session {channel_id}, {name}')
+
+				hook = discord_bot.Webhook.from_url(url, client = self)
 				hook.name = name
 				self.webhooks[channel_id] = hook
+		else:
+			logger.debug('No WebHooks in session')
 
 	# Fetch all WebHooks and optionally create a missing WebHooks
 	async def configure_webhooks(self, install_all : bool = False):
+		logger.debug('Configuring WebHooks...')
 		for guild in self.guilds:
-			if not install_all:
-				hooks = await guild.webhooks()
-				webhooks = { h.channel_id : h for h in hooks }
-				self.webhooks.update(webhooks)
-				continue
+			hooks = await guild.webhooks()
 
-			for channel in guild.channels:
-					if not isinstance(channel, HookableChannel):
+			bot_webhooks = { h.channel_id : h for h in hooks if h.name == self.WEBHOOK_NAME }
+			self.webhooks.update(bot_webhooks)
+
+			if install_all:
+				for channel in guild.channels:
+					if channel.id in self.webhooks or not isinstance(channel, HookableChannel):
 						continue
 
-					hooks = await channel.webhooks()
-					self.webhooks[channel.id] = hooks[0] if hooks \
-						else await self.create_webhook(channel)
+					await self.create_webhook(channel)
 
 		logger.info('WebHooks configured.')
 
@@ -556,22 +572,23 @@ class Bot(discord_bot.Client, SessionStore):
 	async def create_webhook(self, channel : HookableChannel):
 			logger.info(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
 			return await channel.create_webhook(
-				name = "Content Mirror Bot",
+				name = self.WEBHOOK_NAME,
 				reason = "Automatically created WebHook for the bot needs.")
 
 	# Get channel WebHook
 	async def get_channel_webhook(self, channel_id : int):
 		if channel_id in self.webhooks:
+			logger.debug(f'Webhook for {channel_id} from cache')
 			return self.webhooks[channel_id]
+		logger.debug(f'Webhook for {channel_id} NOT cache')
 
 		channel = super().get_channel(channel_id)
 		if not channel:
 			return None
 
 		hooks = await channel.webhooks()
-		if hooks:
-			hook = hooks[0]
-		else:
+		hook = next((h for h in hooks if h.name == self.WEBHOOK_NAME), None)
+		if not hook:
 			hook = await self.create_webhook(channel)
 
 		self.webhooks[channel_id] = hook
