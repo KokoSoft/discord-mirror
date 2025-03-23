@@ -114,36 +114,44 @@ CHANNEL_ID_CWEL_SHOTY					= 1351661532337147994
 CHANNEL_ID_CWEL_AJEMGE1_SHOTY			= 1351661607335497779
 CHANNEL_ID_CWEL_PODSUMOWANIE_STREAMOW	= 1351661476938780732
 CHANNEL_ID_CWEL_GIFY_I_SCREENSHOTY		= 1351661678043070555
+CHANNEL_ID_CWEL_CONSOLE					= 1352623331915862046
+CHANNEL_ID_CWEL_KRECIE_LOGI				= 1352616760125161582
+CHANNEL_ID_CWEL_KRECIE_WIADOMOSCI		= 1352617269972434985
 
 '''
 Ajemcwel
 category     1346952480357089433 Kanały tekstowe
-category     1346952480357089434 Kanały głosowe
 text         1346993660264317070 stream-info
-voice        1346952480357089436 Zgromadzenie Zarządu
-text         1346959527332941834 czat-dla-zweryfikowanych
-voice        1346994389142081656 GŁOSOWY
-voice        1346994399719985183 GŁOSOWY
-voice        1346994411766157334 GŁOSOWY
 text         1347233420258054207 generalne-pierdu-pierdu
+text         1352307614310207538 podsumowanie-stream
 text         1349090894195855450 czat-inne-streamy
+text         1346959527332941834 czat-dla-zweryfikowanych
 text         1347952759902568538 leak
 text         1347014812445708308 shoty
 text         1347246915766583337 nsfw-ajemge1
 text         1347248258753368094 nsfw-other
 text         1350784646744379392 stryczek-pierdolniczek
-text         1346952480357089435 logi
-category     1351661027095478425 gej-content
-text         1351661368792715364 kronika-kraków
+text         1347262555688800266 regulamin
+category     1352055861413023775 Gejowski kontent
 text         1351661476938780732 podsumowanie-streamów
+text         1351661678043070555 gify-i-screenshoty
 text         1351661532337147994 shoty
 text         1351661607335497779 ajemge1-shoty
-text         1351661678043070555 gify-i-screenshoty
+text         1351661368792715364 kronika-kraków
 text         1351661754735919216 uncensored
 text         1351662329363828756 mod-log
+text         1352623331915862046 console
+category     1346952480357089434 Kanały głosowe
+text         1352315239009615893 nowi-uzytkownicy
+voice        1346952480357089436 Zgromadzenie Zarządu
+voice        1346994389142081656 GŁOSOWY
+voice        1346994399719985183 GŁOSOWY
+voice        1346994411766157334 GŁOSOWY
 text         1347259178334294057 dla-moderatorów
-text         1347262555688800266 regulamin
+text         1346952480357089435 logi
 text         1347266753725726720 zdrajcy
+text         1352616760125161582 krecie-logi
+text         1352617269972434985 krecie-wiadomości
 '''
 	
 # test
@@ -159,3 +167,23 @@ CHANNEL_ID_TEST_PODSUMOWANIE_STREAMOW	= 1348821490925043762
 CHANNEL_ID_TEST_GIFY_I_SCREENSHOTY		= 1348821502354526333
 CHANNEL_ID_TEST_TRASH					= 1348821512911585381
 CHANNEL_ID_TEST_TEST9					= 1348821537209192521
+
+'''
+category     1348027145037021267 Kanały tekstowe
+category     1348027145037021268 Kanały głosowe
+text         1351920170410446959 chuj
+text         1348821438387454052 kronika-kraków
+text         1348821490925043762 podsumowanie-streamów
+text         1348821462034808873 shoty
+text         1348821525934903297 ajemge1-shoty
+text         1348821502354526333 gify-i-screenshoty
+text         1348818118897700894 uncensored
+text         1348821427951894598 mod-log
+text         1350994997301743616 test-voice
+category     1350269263549829142 Developer test
+text         1348821537209192521 test9
+text         1348821512911585381 trash
+text         1348027145037021269 ogólny
+text         1348633457835900999 developer-tests
+text         1352790726571724893 console
+'''
