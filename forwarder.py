@@ -462,7 +462,7 @@ class Bot(discord_bot.Client, SessionStore):
 	DEBUG_NO_SEND			= 1
 	DEBUG_NO_CONNECT		= 2
 	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
-	WEBHOOK_NAME			= "Content Mirror Bot"
+	WEBHOOK_REASON			= "Automatically created WebHook for the bot needs."
 
 	def __init__(
 		self,
@@ -510,7 +510,7 @@ class Bot(discord_bot.Client, SessionStore):
 
 	# On Bot ready
 	async def on_ready(self):
-		logger.info(f'Bot logged on as {self.user}')
+		logger.info(f'Bot logged on as {self.user} (ID: {self.user.id})')
 
 		if self.list_channels:
 			print_channel_list(self)
@@ -570,7 +570,7 @@ class Bot(discord_bot.Client, SessionStore):
 				for h in hooks:
 					self.dump_webhook(h)
 
-			bot_webhooks = { h.channel_id : h for h in hooks if h.name == self.WEBHOOK_NAME }
+			bot_webhooks = { h.channel_id : h for h in hooks if h.user.id == self.user.id }
 			self.webhooks.update(bot_webhooks)
 
 			if install_all:
@@ -588,9 +588,7 @@ class Bot(discord_bot.Client, SessionStore):
 	# Create new WebHook
 	async def create_webhook(self, channel : HookableChannel):
 			logger.info(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
-			return await channel.create_webhook(
-				name = self.WEBHOOK_NAME,
-				reason = "Automatically created WebHook for the bot needs.")
+			return await channel.create_webhook(name = self.user.name, reason = self.WEBHOOK_REASON)
 
 	# Get channel WebHook
 	async def get_channel_webhook(self, channel_id : int):
@@ -604,7 +602,7 @@ class Bot(discord_bot.Client, SessionStore):
 			return None
 
 		hooks = await channel.webhooks()
-		hook = next((h for h in hooks if h.name == self.WEBHOOK_NAME), None)
+		hook = next((h for h in hooks if h.user.id == self.user.id), None)
 		if not hook:
 			hook = await self.create_webhook(channel)
 
