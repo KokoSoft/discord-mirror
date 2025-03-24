@@ -456,6 +456,7 @@ class WebHookBot():
 			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
 
 HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, discord_bot.StageChannel, discord_bot.ForumChannel]
+MessageableChannel = Union[ discord_bot.Thread, discord_bot.DMChannel, discord_bot.PartialMessageable, discord_bot.GroupChannel]
 
 # Bot class
 class Bot(discord_bot.Client, SessionStore):
@@ -645,7 +646,11 @@ class Bot(discord_bot.Client, SessionStore):
 			return super().get_channel(channel_id)
 
 	# Forward message from Client
-	async def forward(self, message, channel, use_cached : bool = False):
+	async def forward(self,
+		message : Union[ ParsedMessage, AsyncGenerator, Generator],
+		channel : Union[ int, MessageableChannel, discord_bot.Webhook ],
+		use_cached : bool = False
+	):
 		if not self.is_ready() and \
 		   self.debug < self.DEBUG_NO_CONNECT and \
 		   not self.use_webhooks:
@@ -663,7 +668,7 @@ class Bot(discord_bot.Client, SessionStore):
 		else:
 			await self._forward(message, channel, use_cached)
 
-	async def _forward(self, message, channel, use_cached : bool):
+	async def _forward(self, message : ParsedMessage, channel, use_cached : bool):
 		# API limits single file size and message attachments size.
 		# Split message atachments to stay in message size limit. Send too big files as url
 		# HTTPException: 413 Payload Too Large (error code: 40005): Request entity too large
@@ -713,7 +718,7 @@ class Bot(discord_bot.Client, SessionStore):
 				await self.send(channel, message)
 
 	# Sends message via Bot connection or WebHook
-	async def send(self, channel, message):
+	async def send(self, channel, message : ParsedMessage):
 		if self.debug >= self.DEBUG_NO_SEND:
 			return
 
