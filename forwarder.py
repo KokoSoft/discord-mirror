@@ -5,6 +5,7 @@ import discord_self.discord as discord_user
 from discord_self.discord.utils import escape_mentions
 import asyncio
 import json
+import os
 from hashlib import md5
 from functools import cmp_to_key
 from datetime import datetime
@@ -613,13 +614,30 @@ class Bot(discord_bot.Client, SessionStore):
 		return hook
 
 	# Clone file object
-	async def clone_file(self, file):
-		f = await file.to_file()
+	async def clone_file(self,
+		file : discord_user.Attachment,
+		# This will allow attachments to be saved after deletion more often, compared
+		# to the regular URL which is generally deleted right after the message is deleted.
+		use_cached : bool = False
+	):
+		logger.debug(f'Cloning file "{file.filename}" size: {file.size}, title: "{file.title}", description: "{file.description}"')
+		f = await file.to_file(use_cached = use_cached)
+
+		# The size field contains the cached file size. The actual size of the downloaded main file may be larger!
+		f.fp.seek(0, os.SEEK_END)
+		real_size = f.fp.tell()
+		f.fp.seek(0)
+
+		if file.size != real_size:
+			logger.warning(f"The actual file '{file.filename}' size {real_size} is different than expected {file.size}")
+
 		# Casts discord-self.py File class to discord.py File
-		return discord_bot.File(f.fp,
+		new_file = discord_bot.File(f.fp,
 			filename = f.filename,
 			description = f.description,
 			spoiler = f.spoiler)
+
+		return new_file, real_size
 
 	# Get channel
 	async def get_channel(self, channel_id : int, webhook : bool = None):
@@ -661,13 +679,19 @@ class Bot(discord_bot.Client, SessionStore):
 			if file.size > self.ATTACHMENT_SIZE_LIMIT:
 				files_url.append(file.url)
 			else:
-				if sum + file.size > self.ATTACHMENT_SIZE_LIMIT:
-					files.append(files_part)
-					files_part = []
-					sum = 0
+				f, size = await self.clone_file(file)
+				if size > self.ATTACHMENT_SIZE_LIMIT:
+					# Sometimes the file size reported by discord is smaller than the actual size
+					files_url.append(file.url)
+				else:
+					if sum + size > self.ATTACHMENT_SIZE_LIMIT:
+						files.append(files_part)
+						files_part = []
+						sum = 0
 
-				sum += file.size
-				files_part.append(await self.clone_file(file))
+				sum += size
+				files_part.append(f)
+
 		files.append(files_part)
 		message.attachments = files.pop(0)
 
