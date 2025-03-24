@@ -281,7 +281,7 @@ class Client(discord_user.Client, SessionStore):
 				parsed_msg = message
 
 			for dst in cfg.destinations:
-				await self.bot.forward(parsed_msg, dst)
+				await self.bot.forward(parsed_msg, dst, use_cached = True)
 
 	# History thread
 	async def history(self):
@@ -647,7 +647,7 @@ class Bot(discord_bot.Client, SessionStore):
 			return super().get_channel(channel_id)
 
 	# Forward message from Client
-	async def forward(self, message, channel):
+	async def forward(self, message, channel, use_cached : bool = False):
 		if not self.is_ready() and \
 		   self.debug < self.DEBUG_NO_CONNECT and \
 		   not self.use_webhooks:
@@ -658,14 +658,14 @@ class Bot(discord_bot.Client, SessionStore):
 			
 		if isinstance(message, AsyncGenerator):
 			async for msg in message:
-				await self._forward(msg, channel)
+				await self._forward(msg, channel, use_cached)
 		elif isinstance(message, Generator) or isinstance(message, List):
 			for msg in message:
-				await self._forward(msg, channel)
+				await self._forward(msg, channel, use_cached)
 		else:
-			await self._forward(message, channel)
+			await self._forward(message, channel, use_cached)
 
-	async def _forward(self, message, channel):
+	async def _forward(self, message, channel, use_cached : bool):
 		# API limits single file size and message attachments size.
 		# Split message atachments to stay in message size limit. Send too big files as url
 		# HTTPException: 413 Payload Too Large (error code: 40005): Request entity too large
@@ -677,7 +677,7 @@ class Bot(discord_bot.Client, SessionStore):
 			if file.size > self.ATTACHMENT_SIZE_LIMIT:
 				files_url.append(file.url)
 			else:
-				f, size = await self.clone_file(file)
+				f, size = await self.clone_file(file, use_cached)
 				if size > self.ATTACHMENT_SIZE_LIMIT:
 					# Sometimes the file size reported by discord is smaller than the actual size
 					files_url.append(file.url)
