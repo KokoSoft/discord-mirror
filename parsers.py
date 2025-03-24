@@ -87,6 +87,9 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 
 	# Forward stickers as urls
 	for sticker in message.stickers:
+		if sticker.format == discord_user.StickerFormatType.lottie:
+			logger.info(f'Ignored lottie sticker "{sticker.name}", id: {sticker.id}')
+			continue
 		msg.content = sticker.url
 		msg.webhook_content = sticker.url
 		msg.embeds = discord_bot.utils.MISSING
