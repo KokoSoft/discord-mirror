@@ -2,6 +2,8 @@ import copy
 from parsers import *
 import re
 import discord as discord_bot
+import logging
+logger = logging.getLogger(__name__)
 
 class ModLogParser:
 	def __init__(self,
@@ -89,7 +91,7 @@ class ModLogParser:
 			mod_name = mod.get('display_name') if mod else None
 			timestamp = emb.get('timestamp', 'Uknown')
 			timestamp = timestamp[:19].replace('T',' ')
-			print(timestamp, user_name, emb.get('title','').lower(), 'by', mod_name, f"'{reason}'")
+			logger.debug("{}: {} {} by {} '{}'".format(timestamp, user_name, emb.get('title','').lower(), mod_name, reason))
 
 		return emb
 
@@ -131,7 +133,7 @@ class ModLogParser:
 						'content' : message.content }
 
 		if message.content:
-			print("mod-log:", message.author.name, message.content)
+			logger.debug(f"mod-log: {message.author.name}, {message.content}")
 
 		embeds = []
 		file_embeds = []
