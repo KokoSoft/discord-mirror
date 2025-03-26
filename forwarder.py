@@ -260,7 +260,7 @@ class Client(discord_user.Client, SessionStore):
 				self.set_variable(channel_id, dst, 'last_msg_id', message.id)
 
 	# On message deleted
-	async def on_message_delete(self, message):
+	async def on_message_delete(self, message : discord_user.Message):
 		if not self.bot.is_ready():
 			return
 		
@@ -282,6 +282,12 @@ class Client(discord_user.Client, SessionStore):
 
 			for dst in cfg.destinations:
 				await self.bot.forward(parsed_msg, dst, use_cached = True)
+
+	# On bulk message deleted
+	async def on_bulk_message_delete(self, messages : List[discord_user.Message]):
+		logger.info("Bulk delete %d", len(messages))
+		for msg in messages:
+			await self.on_message_delete(msg)
 
 	# History thread
 	async def history(self):
