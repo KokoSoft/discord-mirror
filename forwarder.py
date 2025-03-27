@@ -99,6 +99,9 @@ AsyncParserCallback = NewType('AsyncParserCallback',
 
 ParserCallback = NewType('ParserCallback', Union[SyncParserCallback, AsyncParserCallback])
 
+HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, discord_bot.StageChannel, discord_bot.ForumChannel]
+MessageableChannel = Union[ discord_bot.Thread, discord_bot.DMChannel, discord_bot.PartialMessageable, discord_bot.GroupChannel]
+
 # Config
 class Config:
 	def __init__(self,
@@ -388,154 +391,11 @@ class Client(discord_user.Client, SessionStore):
 
 		return escape_mentions(result)
 
-# WebHookBot class
-class WebHookBot():
-	def __init__(
-		self,
-		channels_config = [],			# Output channels configuration
-		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
-		token : str = None,										# Bot token to authorize WebHooks (optional, allows high rate)
-	):
-		self.channels_config = channels_config
-		self.allowed_mentions = allowed_mentions
-		#self.token = token
-		self.channels = { ch.id : ch for ch in channels_config }
-		self.session = None
-		self.token = token
-		self.ready: asyncio.Event = asyncio.Event()
+class BotBase:
+	def __init__(self):
 		super().__init__()
-
-	def __del__(self):
-		logger.warning("Destructor called")
-		if self.session:
-			self.session.close()
-
-	async def start(self):
-		self.session = LoggingClientSession()
-
-		for ch in self.channels_config:
-			await ch.setup(self.session, self.token)
-
-		self.ready.set()
-
-	def is_ready(self):
-		return self.ready is not None and self.ready.is_set()
-
-	async def wait_until_ready(self):
-		if self.ready:
-			await self.ready.wait()
-
-	async def get_channel(self, channel_id : int):
-		return self.channels[channel_id]
-
-	async def clone_file(self, file):
-		f = await file.to_file()
-		# Casts discord-self.py File class to discord.py File
-		return discord_bot.File(f.fp,
-			filename=f.filename,
-			description=f.description,
-			spoiler=f.spoiler)
-
-	async def forward(self, msg, channel):
-		if isinstance(msg, discord_user.Message):
-			msg = ParsedWebHookMessage(msg)
-
-		if not isinstance(msg, ParsedWebHookMessage):
-			raise TypeError("Invalid message object type.")
-
-		if isinstance(channel, int):
-			channel = await self.get_channel(channel)
-
-		if not isinstance(channel, WebHookChannel):
-			raise TypeError("Invalid channel object type.")
-
-		if not msg.allowed_mentions:
-			msg.allowed_mentions = self.allowed_mentions
-
-		# API limits file size to 20MB
-		msg.attachments = [await self.clone_file(file) for file in msg.attachments if file.size <= 20*1024*1024]
-		files = None
-
-		if msg.content or msg.attachments or msg.embeds:
-			#if isinstance(channelWebHookChannel
-			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
-			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
-
-HookableChannel = Union[discord_bot.TextChannel, discord_bot.VoiceChannel, discord_bot.StageChannel, discord_bot.ForumChannel]
-MessageableChannel = Union[ discord_bot.Thread, discord_bot.DMChannel, discord_bot.PartialMessageable, discord_bot.GroupChannel]
-
-# Bot class
-class Bot(discord_bot.Client, SessionStore):
-	DEBUG_NO_SEND			= 1
-	DEBUG_NO_CONNECT		= 2
-	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
-	WEBHOOK_REASON			= "Automatically created WebHook for the bot needs."
-
-	def __init__(
-		self,
-		token : str,											# Discord bot token
-		list_channels : bool = False,							# Show channels list
-		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
-		section_name : str = None,								# Name of the section in session file
-		debug : bool = False,									# Disable connection
-		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname)
-		dump_webhooks : bool = False,							# Dump all configured WebHooks
-		preconfigure_webhooks : bool = False,					# Add WebHooks to all channels
-	):
-		self.token = token
-		self.list_channels = list_channels
-		self.use_webhooks = use_webhooks
-		self.dump_webhooks = dump_webhooks
-		self.preconfigure_webhooks = preconfigure_webhooks
-		self.debug = debug
-		self.webhooks = {}
-
-		# Used as prefix in session file
-		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
-
-		intents = discord_bot.Intents.default()
-		intents.webhooks = use_webhooks
-		#intents.message_content = True
-		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
-
-	# Thread start
-	async def start(self, session):
-		self.session_setup(session, self.section_name)
-
-		try:
-			if self.debug < self.DEBUG_NO_CONNECT:
-				await super().start(self.token)
-		except asyncio.exceptions.CancelledError as e:
-			pass
-		# GeneratorExit
-		self.store_webhooks()
-		await self.close()
-
-	# On Bot Setup
-	async def setup_hook(self):
-		self.retrieve_webhooks()
-
-	# On Bot ready
-	async def on_ready(self):
-		logger.info(f'Bot logged on as {self.user} (ID: {self.user.id})')
-
-		if self.list_channels:
-			print_channel_list(self)
-
-		if self.use_webhooks:
-			if self.dump_webhooks or self.preconfigure_webhooks:
-				await self.configure_webhooks(install_all = self.preconfigure_webhooks)
-
-	# Store WebHooks in session file
-	def store_webhooks(self):
-		if not self.use_webhooks:
-			return
-
-		logger.debug('Storing WebHooks...')
-		for channel_id, hook in self.webhooks.items():
-			self.set_variable('webhooks', channel_id, 'name', hook.name)
-			self.set_variable('webhooks', channel_id, 'url', hook.url)
-
+		
+	# Load WebHooks from session file
 	def retrieve_webhooks(self):
 		if not self.use_webhooks:
 			return
@@ -554,67 +414,6 @@ class Bot(discord_bot.Client, SessionStore):
 				self.webhooks[channel_id] = hook
 		else:
 			logger.debug('No WebHooks in session')
-
-	# Dump WebHook to session file
-	def dump_webhook(self, hook : discord_bot.Webhook):
-		id = hook.id
-		self.set_variable('webhooks-dump', id, 'name', hook.name)
-		if hook.avatar:
-			self.set_variable('webhooks-dump', id, 'avatar', hook.avatar.url)
-		self.set_variable('webhooks-dump', id, 'channel_id', hook.channel_id)
-		self.set_variable('webhooks-dump', id, 'guild_id', hook.guild_id)
-		self.set_variable('webhooks-dump', id, 'url', hook.url)
-		self.set_variable('webhooks-dump', id, 'user_id', hook.user.id)
-		self.set_variable('webhooks-dump', id, 'username', hook.user.name)
-
-	# Fetch all WebHooks and optionally create a missing WebHooks
-	async def configure_webhooks(self, install_all : bool = False):
-		logger.debug('Configuring WebHooks...')
-		for guild in self.guilds:
-			hooks = await guild.webhooks()
-
-			if self.dump_webhooks:
-				for h in hooks:
-					self.dump_webhook(h)
-
-			bot_webhooks = { h.channel_id : h for h in hooks if h.user.id == self.user.id }
-			self.webhooks.update(bot_webhooks)
-
-			if install_all:
-				for channel in guild.channels:
-					if channel.id in self.webhooks or not isinstance(channel, HookableChannel):
-						continue
-
-					await self.create_webhook(channel)
-
-		logger.info('WebHooks configured.')
-
-	async def on_webhooks_update(self, channel):
-		logger.info(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
-
-	# Create new WebHook
-	async def create_webhook(self, channel : HookableChannel):
-			logger.info(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
-			return await channel.create_webhook(name = self.user.name, reason = self.WEBHOOK_REASON)
-
-	# Get channel WebHook
-	async def get_channel_webhook(self, channel_id : int):
-		if channel_id in self.webhooks:
-			logger.debug(f'Webhook for {channel_id} from cache')
-			return self.webhooks[channel_id]
-		logger.debug(f'Webhook for {channel_id} NOT cache')
-
-		channel = super().get_channel(channel_id)
-		if not channel:
-			return None
-
-		hooks = await channel.webhooks()
-		hook = next((h for h in hooks if h.user.id == self.user.id), None)
-		if not hook:
-			hook = await self.create_webhook(channel)
-
-		self.webhooks[channel_id] = hook
-		return hook
 
 	# Clone file object
 	async def clone_file(self,
@@ -641,15 +440,6 @@ class Bot(discord_bot.Client, SessionStore):
 			spoiler = f.spoiler)
 
 		return new_file, real_size
-
-	# Get channel
-	async def get_channel(self, channel_id : int, webhook : bool = None):
-		if webhook is None:
-			webhook = self.use_webhooks
-		if webhook:
-			return await self.get_channel_webhook(channel_id)
-		else:
-			return super().get_channel(channel_id)
 
 	# Forward message from Client
 	async def forward(self,
@@ -724,7 +514,10 @@ class Bot(discord_bot.Client, SessionStore):
 				await self.send(channel, message)
 
 	# Sends message via Bot connection or WebHook
-	async def send(self, channel, message : ParsedMessage):
+	async def send(self,
+		channel : Union[discord_bot.Webhook, MessageableChannel],
+		message : ParsedMessage
+	):
 		if self.debug >= self.DEBUG_NO_SEND:
 			return
 
@@ -743,6 +536,230 @@ class Bot(discord_bot.Client, SessionStore):
 				embeds = message.embeds,
 				files = message.attachments,
 				poll = message.poll)
+
+
+
+
+
+
+
+
+# WebHookBot class
+class WebHookBot():
+	def __init__(
+		self,
+		channels_config = [],			# Output channels configuration
+		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
+		token : str = None,										# Bot token to authorize WebHooks (optional, allows high rate)
+	):
+		self.channels_config = channels_config
+		self.allowed_mentions = allowed_mentions
+		#self.token = token
+		self.channels = { ch.id : ch for ch in channels_config }
+		self.session = None
+		self.token = token
+		self.ready: asyncio.Event = asyncio.Event()
+		super().__init__()
+
+	def __del__(self):
+		logger.warning("Destructor called")
+		if self.session:
+			self.session.close()
+
+	async def start(self):
+		self.session = LoggingClientSession()
+
+		for ch in self.channels_config:
+			await ch.setup(self.session, self.token)
+
+		self.ready.set()
+
+	def is_ready(self):
+		return self.ready is not None and self.ready.is_set()
+
+	async def wait_until_ready(self):
+		if self.ready:
+			await self.ready.wait()
+
+	async def get_channel(self, channel_id : int):
+		return self.channels[channel_id]
+
+	async def clone_file(self, file):
+		f = await file.to_file()
+		# Casts discord-self.py File class to discord.py File
+		return discord_bot.File(f.fp,
+			filename=f.filename,
+			description=f.description,
+			spoiler=f.spoiler)
+
+	async def forward(self, msg, channel):
+		if isinstance(msg, discord_user.Message):
+			msg = ParsedWebHookMessage(msg)
+
+		if not isinstance(msg, ParsedWebHookMessage):
+			raise TypeError("Invalid message object type.")
+
+		if isinstance(channel, int):
+			channel = await self.get_channel(channel)
+
+		if not isinstance(channel, WebHookChannel):
+			raise TypeError("Invalid channel object type.")
+
+		if not msg.allowed_mentions:
+			msg.allowed_mentions = self.allowed_mentions
+
+		# API limits file size to 20MB
+		msg.attachments = [await self.clone_file(file) for file in msg.attachments if file.size <= 20*1024*1024]
+		files = None
+
+		if msg.content or msg.attachments or msg.embeds:
+			#if isinstance(channelWebHookChannel
+			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
+			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
+
+# Bot class
+class Bot(discord_bot.Client, BotBase, SessionStore):
+	DEBUG_NO_SEND			= 1
+	DEBUG_NO_CONNECT		= 2
+	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
+	WEBHOOK_REASON			= "Automatically created WebHook for the bot needs."
+
+	def __init__(
+		self,
+		token : str,											# Discord bot token
+		list_channels : bool = False,							# Show channels list
+		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
+		section_name : str = None,								# Name of the section in session file
+		debug : bool = False,									# Disable connection
+		use_webhooks : bool = True,								# Use WebHooks to post messages (allows set nickname)
+		dump_webhooks : bool = False,							# Dump all configured WebHooks
+		preconfigure_webhooks : bool = False,					# Add WebHooks to all channels
+		intents : discord_bot.Intents = discord_bot.Intents.default(),
+	):
+		self.token = token
+		self.list_channels = list_channels
+		self.use_webhooks = use_webhooks
+		self.dump_webhooks = dump_webhooks
+		self.preconfigure_webhooks = preconfigure_webhooks
+		self.debug = debug
+		self.webhooks = {}
+
+		# Used as prefix in session file
+		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
+
+		intents.webhooks = use_webhooks
+		#intents.message_content = True
+		super().__init__(intents=intents, allowed_mentions = allowed_mentions)
+
+	# Thread start
+	async def start(self, session):
+		self.session_setup(session, self.section_name)
+
+		try:
+			if self.debug < self.DEBUG_NO_CONNECT:
+				await super().start(self.token)
+		except asyncio.exceptions.CancelledError as e:
+			pass
+		# GeneratorExit
+		self.store_webhooks()
+		await self.close()
+
+	# On Bot Setup
+	async def setup_hook(self):
+		if self.use_webhooks:
+			self.retrieve_webhooks()
+
+	# On Bot ready
+	async def on_ready(self):
+		logger.info(f'Bot logged on as {self.user} (ID: {self.user.id})')
+
+		if self.list_channels:
+			print_channel_list(self)
+
+		if self.use_webhooks:
+			if self.dump_webhooks or self.preconfigure_webhooks:
+				await self.configure_webhooks(install_all = self.preconfigure_webhooks)
+
+	# Store WebHooks in session file
+	def store_webhooks(self):
+		if not self.use_webhooks:
+			return
+
+		logger.debug('Storing WebHooks...')
+		for channel_id, hook in self.webhooks.items():
+			self.set_variable('webhooks', channel_id, 'name', hook.name)
+			self.set_variable('webhooks', channel_id, 'url', hook.url)
+
+	# Dump WebHook to session file
+	def dump_webhook(self, hook : discord_bot.Webhook):
+		id = hook.id
+		self.set_variable('webhooks-dump', id, 'name', hook.name)
+		if hook.avatar:
+			self.set_variable('webhooks-dump', id, 'avatar', hook.avatar.url)
+		self.set_variable('webhooks-dump', id, 'channel_id', hook.channel_id)
+		self.set_variable('webhooks-dump', id, 'guild_id', hook.guild_id)
+		self.set_variable('webhooks-dump', id, 'url', hook.url)
+		self.set_variable('webhooks-dump', id, 'user_id', hook.user.id)
+		self.set_variable('webhooks-dump', id, 'username', hook.user.name)
+
+	# Fetch all WebHooks and optionally create a missing WebHooks
+	async def configure_webhooks(self, install_all : bool = False):
+		logger.debug('Configuring WebHooks...')
+		for guild in self.guilds:
+			hooks = await guild.webhooks()
+
+			if self.dump_webhooks:
+				for h in hooks:
+					self.dump_webhook(h)
+
+			bot_webhooks = { h.channel_id : h for h in hooks if h.user.id == self.user.id }
+			self.webhooks.update(bot_webhooks)
+
+			if install_all:
+				for channel in guild.channels:
+					if channel.id in self.webhooks or not isinstance(channel, HookableChannel):
+						continue
+
+					await self.create_webhook(channel)
+
+		logger.info('WebHooks configured.')
+
+	async def on_webhooks_update(self, channel):
+		logger.info(f'WebHooks for {channel.name} (ID: {channel.id} updated.')
+
+	# Create new WebHook
+	async def create_webhook(self, channel : HookableChannel):
+			logger.info(f'Creating WebHook for channel {channel.name} (ID: {channel.id})')
+			return await channel.create_webhook(name = self.user.name, reason = self.WEBHOOK_REASON)
+
+	# Get channel WebHook
+	async def get_channel_webhook(self, channel_id : int):
+		if channel_id in self.webhooks:
+			logger.debug(f'Webhook for {channel_id} from cache')
+			return self.webhooks[channel_id]
+		logger.debug(f'Webhook for {channel_id} NOT cache')
+
+		channel = super().get_channel(channel_id)
+		if not channel:
+			return None
+
+		hooks = await channel.webhooks()
+		hook = next((h for h in hooks if h.user.id == self.user.id), None)
+		if not hook:
+			hook = await self.create_webhook(channel)
+
+		self.webhooks[channel_id] = hook
+		return hook
+
+	# Get channel
+	async def get_channel(self, channel_id : int, webhook : bool = None):
+		if webhook is None:
+			webhook = self.use_webhooks
+		if webhook:
+			return await self.get_channel_webhook(channel_id)
+		else:
+			return super().get_channel(channel_id)
+
 
 # BotRunner class
 class BotRunner():
