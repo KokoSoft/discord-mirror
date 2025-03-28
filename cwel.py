@@ -3,6 +3,7 @@ import discord as discord_bot
 import forwarder
 import tokens
 from channels import *
+import traitors
 from parsers import preserve_author, delete_parser
 from logging import handlers
 import logging
@@ -16,8 +17,10 @@ logger.addHandler(udp_handler)
 
 mod_parser = ModLogParser('mod_cwel.log')
 
+traitor = traitors.Traitors(CHANNEL_ID_CWEL_KRECIE_WIADOMOSCI, CHANNEL_ID_CWEL_KRECIE_LOGI)
+
 sources = [
-	forwarder.Client(tokens.G, [	# *
+	traitors.Client(tokens.G, traitor, [	# *
 		forwarder.Config(
 			sources = CHANNEL_ID_GEJ_GIFY_I_SCREENSHOTY,
 			destinations = CHANNEL_ID_CWEL_GIFY_I_SCREENSHOTY,
@@ -64,7 +67,7 @@ sources = [
 	], section_name = 'special', presence = discord_user.Status.invisible)
 ]
 
-bot = forwarder.Bot(tokens.BOT2, section_name = 'bot',
+bot = traitors.Bot(tokens.BOT2, traitor, section_name = 'bot',
 	allowed_mentions = discord_bot.AllowedMentions(users=False, roles=False))
 mod_parser.set_bot(bot)
 forwarder.BotRunner(bot, sources, session_file = 'session_cwel.json').run()
