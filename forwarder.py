@@ -465,6 +465,9 @@ class BotBase:
 			await self._forward(message, channel, use_cached)
 
 	async def _forward(self, message : ParsedMessage, channel, use_cached : bool):
+		if not isinstance(message, ParsedMessage):
+			raise RuntimeError('message must be an instance of ParsedMessage')
+
 		# API limits single file size and message attachments size.
 		# Split message atachments to stay in message size limit. Send too big files as url
 		# HTTPException: 413 Payload Too Large (error code: 40005): Request entity too large
