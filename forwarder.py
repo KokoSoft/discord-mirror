@@ -418,7 +418,10 @@ class BotBase:
 		use_cached : bool = False
 	):
 		logger.debug(f'Cloning file "{file.filename}" size: {file.size}, title: "{file.title}", description: "{file.description}"')
-		f = await file.to_file(use_cached = use_cached)
+		try:
+			f = await file.to_file(use_cached = use_cached)
+		except discord_user.NotFound:
+			return None, 0
 
 		# The size field contains the cached file size. The actual size of the downloaded main file may be larger!
 		f.fp.seek(0, os.SEEK_END)
@@ -475,6 +478,10 @@ class BotBase:
 				files_url.append(file.url)
 			else:
 				f, size = await self.clone_file(file, use_cached)
+				if not f:
+					# File not found
+					continue
+
 				if size > self.ATTACHMENT_SIZE_LIMIT:
 					# Sometimes the file size reported by discord is smaller than the actual size
 					files_url.append(file.url)
