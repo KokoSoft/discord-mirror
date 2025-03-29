@@ -249,8 +249,7 @@ class Client(discord_user.Client, SessionStore):
 				continue
 
 			# Pass message to parser if defined
-			parser = cfg.parser
-			if parser:
+			if parser := cfg.parser:
 				parsed_msg = await parser(self, message) if is_async(parser) \
 					else parser(self, message)
 				if not parsed_msg:
@@ -274,8 +273,7 @@ class Client(discord_user.Client, SessionStore):
 				continue
 
 			# Pass message to parser if defined
-			parser = cfg.parser
-			if parser:
+			if parser := cfg.parser:
 				parsed_msg = await parser(self, message) if is_async(parser) \
 					else parser(self, message)
 				if not parsed_msg:
@@ -328,8 +326,7 @@ class Client(discord_user.Client, SessionStore):
 				last_id = msg.id
 
 				# Pass message to parser if defined
-				parser = cfg.parser
-				if parser:
+				if parser := cfg.parser:
 					parsed_msg = await parser(self, msg) if is_async(parser) \
 						else parser(self, msg)
 					if not parsed_msg:
@@ -358,15 +355,13 @@ class Client(discord_user.Client, SessionStore):
 
 		def resolve_member(id: int) -> str:
 			for guild in self.guilds:
-				m = guild.get_member(id)
-				if m:
+				if m := guild.get_member(id):
 					return f'@{m.display_name}'
 			return '@deleted-user'
 
 		def resolve_role(id: int) -> str:
 			for guild in self.guilds:
-				r = guild.get_role(id)
-				if r:
+				if r := guild.get_role(id):
 					return f'@{r.name}'
 			return '@deleted-role'
 
