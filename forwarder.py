@@ -299,10 +299,13 @@ class Client(discord_user.Client, SessionStore):
 			get_history = (cfg.restore or cfg.copy_history) and \
 						  not cfg.only_deleted and cfg.sources
 			for src in cfg.sources:
-				if get_history:
-					await self.history_from(cfg, src)
-				self.forward_ready.append(src)
-				logger.info(f"History from {src} synched")
+				try:
+					if get_history:
+						await self.history_from(cfg, src)
+					self.forward_ready.append(src)
+					logger.info(f"History from {src} synched")
+				except (RuntimeWarning, discord_user.Forbidden) as e:
+					logger.error('Unable to sync history from %d: %s', src, e)
 
 	# Read message history from a channel
 	async def history_from(self, cfg, source):
@@ -312,7 +315,9 @@ class Client(discord_user.Client, SessionStore):
 		if (not cfg.copy_history and last_id is None) or (last_id == 0):
 			return
 
-		src_ch = self.get_channel(source)
+		if not (src_ch := self.get_channel(source)):
+			raise RuntimeWarning(f'Channel not found.')
+
 		dst_list = [await self.bot.get_channel(dst) for dst in cfg.destinations]
 		prev = False
 
@@ -419,7 +424,8 @@ class BotBase:
 		logger.debug(f'Cloning file "{file.filename}" size: {file.size}, title: "{file.title}", description: "{file.description}"')
 		try:
 			f = await file.to_file(use_cached = use_cached)
-		except discord_user.NotFound:
+		except discord_user.NotFound as e:
+			logger.warning('Unable to clone file "%s": %s', file.filename, e)
 			return None, 0
 
 		# The size field contains the cached file size. The actual size of the downloaded main file may be larger!
