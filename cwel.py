@@ -59,6 +59,18 @@ sources = [
 			copy_history = True,
 		),
 		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_KRONIKA_WROCLAW,
+			destinations = CHANNEL_ID_CWEL_KRONIKA_WROCLAW,
+			parser = preserve_author,
+			copy_history = True,
+		),
+		forwarder.Config(
+			sources = CHANNEL_ID_GEJ_TINDER_VS_RZECZYWISTOSC,
+			destinations = CHANNEL_ID_CWEL_TINDER_VS_RZECZYWISTOSC,
+			parser = preserve_author,
+			copy_history = True,
+		),
+		forwarder.Config(
 			sources = CHANNEL_ID_GEJ_MOD_LOG,
 			destinations = CHANNEL_ID_CWEL_MOD_LOG,
 			parser = mod_parser,
