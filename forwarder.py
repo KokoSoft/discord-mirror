@@ -790,6 +790,12 @@ class BotRunner():
 			level = log_level
 		)
 
+	@staticmethod
+	def serialize_sets(obj):
+		if isinstance(obj, set):
+			return list(obj)
+		return obj
+
 	def run(self):
 		try:
 			with open(self.session_file, 'r') as f:
@@ -816,4 +822,4 @@ class BotRunner():
 			loop.close()
 
 			with open(self.session_file, 'w', encoding='utf-8') as f:
-				json.dump(session, f, ensure_ascii=False, indent=4)
+				json.dump(session, f, ensure_ascii=False, indent=4, default=self.serialize_sets)
