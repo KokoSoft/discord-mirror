@@ -136,9 +136,7 @@ class SessionStore():
 		super().__init__()
 
 	def session_setup(self, session, key):
-		if key not in session:
-			session[key] = {}
-		self.session = session[key]
+		self.session = session.setdefault(key, {})
 
 	def get_variable(self, src, dst, name):
 		# Keys are stored as strings in json
@@ -386,6 +384,7 @@ class Client(discord_user.Client, SessionStore):
 
 		return escape_mentions(result)
 
+# Bot Base
 class BotBase:
 	def __init__(self):
 		super().__init__()
