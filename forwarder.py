@@ -8,10 +8,12 @@ import json
 import os
 from hashlib import md5
 from functools import cmp_to_key
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 import logging
 logger = logging.getLogger(__name__)
+
+time_zone = timezone.utc
 
 class Snowflake:
 	def __init__(self, id):
@@ -309,6 +311,8 @@ class Client(discord_user.Client, SessionStore):
 
 	# Read message history from a channel
 	async def history_from(self, cfg, source):
+		global time_zone
+
 		last_id = self.get_last_msg_id(cfg, source)
 
 		# Skip history copying if no messages forwarded before OR no destination channels
@@ -345,7 +349,7 @@ class Client(discord_user.Client, SessionStore):
 						self.set_variable(source, dst_id, 'last_msg_id', last_id)
 			if last_id:
 				logger.info(f'{source}: History pos ' +
-					discord_user.utils.snowflake_time(last_id).strftime('%Y-%m-%d %H:%M:%S'))
+					discord_user.utils.snowflake_time(last_id).astimezone(time_zone).strftime('%Y-%m-%d %H:%M:%S'))
 
 	# Clean message content
 	def clean_content(self, content : str) -> str:
