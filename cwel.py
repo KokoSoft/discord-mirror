@@ -1,3 +1,4 @@
+from zoneinfo import ZoneInfo
 import discord_self.discord as discord_user
 import discord as discord_bot
 import forwarder
@@ -8,6 +9,8 @@ from parsers import preserve_author, delete_parser
 from logging import handlers
 import logging
 from mod_log_parser import ModLogParser
+
+forwarder.time_zone = ZoneInfo("Europe/Warsaw")
 
 logger = logging.getLogger()
 udp_handler = logging.handlers.DatagramHandler('127.0.0.1', tokens.LOGGER_PORT)
