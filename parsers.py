@@ -1,4 +1,4 @@
-from forwarder import ParsedMessage, Client
+import forwarder
 import discord_self.discord as discord_user
 import discord as discord_bot
 import logging
@@ -44,14 +44,14 @@ def is_spam(message, allow_bot : bool = False):
 		return True
 	return False
 
-def preserve_author(client : Client, message : discord_user.Message, allow_bot : bool = False):
+def preserve_author(client : forwarder.Client, message : discord_user.Message, allow_bot : bool = False):
 	if message.type in [discord_user.MessageType.thread_created,
 						discord_user.MessageType.member_join,
 						discord_user.MessageType.poll_result] or \
 	   is_spam(message, allow_bot):
 		return
 
-	msg = ParsedMessage(message)
+	msg = forwarder.ParsedMessage(message)
 	if len(msg.content) > 2000:
 		logger.warning('Content too long!', message)
 		return
@@ -68,7 +68,7 @@ def preserve_author(client : Client, message : discord_user.Message, allow_bot :
 	forwarded = False
 	if message.type == discord_user.MessageType.default:
 		for msg_snap in message.message_snapshots:
-			snap = ParsedMessage(msg_snap)
+			snap = forwarder.ParsedMessage(msg_snap)
 			content = client.clean_content(msg_snap.content)
 			snap.webhook_content = content
 			snap.content = f"**{message.author.name}**: {content}"
@@ -107,7 +107,7 @@ def delete_parser_emb(client, message):
 		yield msg
 
 def delete_parser(client, message):
-	timestamp = message.created_at.strftime('%Y-%m-%d %H:%M:%S')
+	timestamp = message.created_at.astimezone(forwarder.time_zone).strftime('%Y-%m-%d %H:%M:%S')
 	username = f"{message.author.name}     {message.channel.name}     {timestamp}"
 
 	for msg in preserve_author(client, message):
@@ -130,7 +130,7 @@ def delete_parser_tmp(client, message):
 	channel = f[0]
 	user = f[1]
 	
-	timestamp = message.created_at.strftime('%Y-%m-%d %H:%M:%S')
+	timestamp = message.created_at.astimezone(forwarder.time_zone).strftime('%Y-%m-%d %H:%M:%S')
 	username = f"{user}     {channel}     {timestamp}"
 	message.embeds = []
 
