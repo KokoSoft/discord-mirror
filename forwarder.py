@@ -137,8 +137,13 @@ class SessionStore():
 	def __init__(self):
 		super().__init__()
 
-	def session_setup(self, session, key):
-		self.session = session.setdefault(key, {})
+	# Set section name in session file
+	def set_session_section(self, token : str, section_name : str):
+		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
+
+	# Setup session
+	def set_session(self, session):
+		self.session = session.setdefault(self.section_name, {})
 
 	def get_variable(self, src, dst, name):
 		# Keys are stored as strings in json
@@ -176,6 +181,7 @@ class Client(discord_user.Client, SessionStore):
 		presence : discord_user.Status = None,	# User presence to set
 		section_name : str = None				# Name of the section in session file
 	):
+		super().__init__()
 		self.token = token
 		self.debug = debug
 		self.list_channels = list_channels
@@ -185,13 +191,12 @@ class Client(discord_user.Client, SessionStore):
 		self.presence = presence
 		self.on_ready_task = None
 
-		# Used as prefix in session file
-		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
-		super().__init__()
-	
+		self.set_session_section(token, section_name)
+
+	# Start
 	async def start(self, bot, session):
 		self.bot = bot
-		self.session_setup(session, self.section_name)
+		self.set_session(session)
 
 		for cfg in self.config:
 			if cfg.discard_session and cfg.sources:
@@ -658,8 +663,7 @@ class Bot(discord_bot.Client, BotBase, SessionStore):
 		self.debug = debug
 		self.webhooks = {}
 
-		# Used as prefix in session file
-		self.section_name = section_name if section_name else md5(token.encode()).hexdigest()
+		self.set_session_section(token, section_name)
 
 		intents.webhooks = use_webhooks
 		#intents.message_content = True
@@ -667,7 +671,7 @@ class Bot(discord_bot.Client, BotBase, SessionStore):
 
 	# Thread start
 	async def start(self, session):
-		self.session_setup(session, self.section_name)
+		self.set_session(session)
 
 		try:
 			if self.debug < self.DEBUG_NO_CONNECT:
