@@ -126,6 +126,16 @@ def wonsik_filter(client, message):
 		msg.username = username
 		msg.content = f"**{message.author.display_name}** on **{message.channel.name}**: {message.content}"
 		yield msg
+
+def lisek_filter(client, message):
+	if message.author.id != 1351707277048156230:
+		return
+
+	username = f"{message.author.display_name}     {message.channel.name}"
+
+	for msg in preserve_author(client, message):
+		msg.username = username
+		msg.content = f"**{message.author.display_name}** on **{message.channel.name}**: {message.content}"
 		yield msg
 
 def as_embed(client, msg):
