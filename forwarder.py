@@ -4,6 +4,7 @@ import discord as discord_bot
 import discord_self.discord as discord_user
 from discord_self.discord.utils import escape_mentions
 import asyncio
+import aiohttp
 import json
 import os
 from hashlib import md5
@@ -399,25 +400,28 @@ class Client(discord_user.Client, SessionStore):
 		return escape_mentions(result)
 
 # Bot Base
-class BotBase:
+class BotBase(SessionStore):
+	DEBUG_NO_SEND			= 1
+	DEBUG_NO_CONNECT		= 2
+	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
+
 	def __init__(self):
+		self.debug = 0
 		super().__init__()
 		
 	# Load WebHooks from session file
-	def retrieve_webhooks(self):
-		if not self.use_webhooks:
-			return
-
+	def retrieve_webhooks(self, http_session = discord_bot.utils.MISSING):
 		logger.debug('Retrieving WebHooks...')
 
-		if 'webhooks' in self.session:
-			for channel_id in self.session['webhooks']:
+		if webhooks := self.session.get('webhooks', None):
+			for channel_id, item in webhooks.items():
 				channel_id = int(channel_id)
-				name = self.get_variable('webhooks', channel_id, 'name')
-				url = self.get_variable('webhooks', channel_id, 'url')
-				logger.debug(f'Webhook from session {channel_id}, {name}')
+				name = item.get('name')
+				url = item.get('url')
+				logger.debug('Webhook from session %s, %s', channel_id, name)
 
-				hook = discord_bot.Webhook.from_url(url, client = self)
+				client = self if not http_session else discord_bot.utils.MISSING
+				hook = discord_bot.Webhook.from_url(url, client = client, session = http_session)
 				hook.name = name
 				self.webhooks[channel_id] = hook
 		else:
@@ -556,42 +560,49 @@ class BotBase:
 				files = message.attachments,
 				poll = message.poll)
 
-
-
-
-
-
-
-
 # WebHookBot class
-class WebHookBot():
+class WebHookBot(BotBase):
 	def __init__(
 		self,
-		channels_config = [],			# Output channels configuration
+		channels_config : List[tuple[int, str]] = [],			# Output channels configuration
 		allowed_mentions : discord_bot.AllowedMentions = None,	# Allowed mentions set
-		token : str = None,										# Bot token to authorize WebHooks (optional, allows high rate)
+		token : str = None,										# Bot token to autogenerate session file section name
+		section_name : str = None,								# Name of the section in session file
 	):
 		self.channels_config = channels_config
 		self.allowed_mentions = allowed_mentions
-		#self.token = token
-		self.channels = { ch.id : ch for ch in channels_config }
-		self.session = None
+		self.webhooks = {}
+		self.http_session = None
 		self.token = token
 		self.ready: asyncio.Event = asyncio.Event()
+		# Dummy event to gracefully shutdown ClientSession
+		self.close_event: asyncio.Event = asyncio.Event()
+
+		self.use_session = bool(token) or bool(section_name)
+		if self.use_session:
+			self.set_session_section(token, section_name)
+
 		super().__init__()
 
-	def __del__(self):
-		logger.warning("Destructor called")
-		if self.session:
-			self.session.close()
+	async def start(self, session):
+		self.http_session = aiohttp.ClientSession()
 
-	async def start(self):
-		self.session = LoggingClientSession()
+		try:
+			if self.use_session:
+				self.set_session(session)
+				self.retrieve_webhooks(self.http_session)
 
-		for ch in self.channels_config:
-			await ch.setup(self.session, self.token)
+			self.configure_channels()
+			self.ready.set()
 
-		self.ready.set()
+			await self.close_event.wait()
+		except asyncio.exceptions.CancelledError as e:
+			# GeneratorExit
+			pass
+		except:
+			logger.exception('Unhandled exception in WebHookBot start.')
+		finally:
+			await self.http_session.close()
 
 	def is_ready(self):
 		return self.ready is not None and self.ready.is_set()
@@ -600,47 +611,20 @@ class WebHookBot():
 		if self.ready:
 			await self.ready.wait()
 
+	def configure_channels(self):
+		for ch in self.channels_config:
+			channel_id = ch[0]
+			url = ch[1]
+			logger.debug('Webhook from configuration %d', channel_id)
+			hook = discord_bot.Webhook.from_url(url, session = self.http_session)
+			self.webhooks[channel_id] = hook
+
 	async def get_channel(self, channel_id : int):
-		return self.channels[channel_id]
+		return self.webhooks[channel_id]
 
-	async def clone_file(self, file):
-		f = await file.to_file()
-		# Casts discord-self.py File class to discord.py File
-		return discord_bot.File(f.fp,
-			filename=f.filename,
-			description=f.description,
-			spoiler=f.spoiler)
-
-	async def forward(self, msg, channel):
-		if isinstance(msg, discord_user.Message):
-			msg = ParsedWebHookMessage(msg)
-
-		if not isinstance(msg, ParsedWebHookMessage):
-			raise TypeError("Invalid message object type.")
-
-		if isinstance(channel, int):
-			channel = await self.get_channel(channel)
-
-		if not isinstance(channel, WebHookChannel):
-			raise TypeError("Invalid channel object type.")
-
-		if not msg.allowed_mentions:
-			msg.allowed_mentions = self.allowed_mentions
-
-		# API limits file size to 20MB
-		msg.attachments = [await self.clone_file(file) for file in msg.attachments if file.size <= 20*1024*1024]
-		files = None
-
-		if msg.content or msg.attachments or msg.embeds:
-			#if isinstance(channelWebHookChannel
-			# HTTPException: 400 Bad Request (error code: 50006): Cannot send an empty message
-			await channel.send(msg)#.content, embeds = msg.embeds, files = files)
 
 # Bot class
-class Bot(discord_bot.Client, BotBase, SessionStore):
-	DEBUG_NO_SEND			= 1
-	DEBUG_NO_CONNECT		= 2
-	ATTACHMENT_SIZE_LIMIT	= 8 * 1024 * 1024
+class Bot(discord_bot.Client, BotBase):
 	WEBHOOK_REASON			= "Automatically created WebHook for the bot needs."
 
 	def __init__(
