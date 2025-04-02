@@ -768,7 +768,7 @@ class Bot(discord_bot.Client, BotBase):
 class BotRunner():
 	def __init__(self,
 		bot,
-		sources : list[Config] = [],
+		sources : list[Client] = [],
 		session_file : str = "session.json",
 		log_level = discord_bot.utils.MISSING
 	):
@@ -789,11 +789,13 @@ class BotRunner():
 		return obj
 
 	def run(self):
-		try:
-			with open(self.session_file, 'r') as f:
-				session = json.load(f)
-		except FileNotFoundError:
-			session = {}
+		session = {}
+		if self.session_file:
+			try:
+				with open(self.session_file, 'r') as f:
+					session = json.load(f)
+			except FileNotFoundError:
+				pass
 
 		loop = asyncio.get_event_loop()
 		tasks = [loop.create_task(src.start(self.bot, session)) for src in self.sources]
@@ -813,5 +815,6 @@ class BotRunner():
 
 			loop.close()
 
-			with open(self.session_file, 'w', encoding='utf-8') as f:
-				json.dump(session, f, ensure_ascii=False, indent=4, default=self.serialize_sets)
+			if self.session_file:
+				with open(self.session_file, 'w', encoding='utf-8') as f:
+					json.dump(session, f, ensure_ascii=False, indent=4, default=self.serialize_sets)
