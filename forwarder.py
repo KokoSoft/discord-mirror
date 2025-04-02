@@ -250,8 +250,8 @@ class Client(discord_user.Client, SessionStore):
 		channel_id = message.channel.id
 
 		for cfg in self.config:
-			if (cfg.sources is not None and channel_id not in cfg.sources) or \
-			   channel_id not in self.forward_ready:
+			if cfg.sources is not None and (channel_id not in cfg.sources or \
+			   channel_id not in self.forward_ready):
 				continue
 
 			# Pass message to parser if defined
@@ -306,6 +306,9 @@ class Client(discord_user.Client, SessionStore):
 		for cfg in self.config:
 			get_history = (cfg.restore or cfg.copy_history) and \
 						  not cfg.only_deleted and cfg.sources
+			if not cfg.sources:
+				continue
+
 			for src in cfg.sources:
 				try:
 					if get_history:
