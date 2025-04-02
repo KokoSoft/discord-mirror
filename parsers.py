@@ -120,7 +120,12 @@ def wonsik_filter(client, message):
 	if message.author.id != USER_ID_WONSIKGEJ:
 		return
 
+	username = f"{message.author.display_name}     {message.channel.name}"
+
 	for msg in preserve_author(client, message):
+		msg.username = username
+		msg.content = f"**{message.author.display_name}** on **{message.channel.name}**: {message.content}"
+		yield msg
 		yield msg
 
 def as_embed(client, msg):
