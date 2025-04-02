@@ -1,6 +1,7 @@
 import forwarder
 import discord_self.discord as discord_user
 import discord as discord_bot
+from channels import USER_ID_WONSIKGEJ
 import logging
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,13 @@ def delete_parser(client, message):
 	for msg in preserve_author(client, message):
 		msg.username = username
 		msg.content = f"**{message.author.name}** on **{message.channel.name}** at {timestamp} *deleted message*:\n{message.content}"
+		yield msg
+
+def wonsik_filter(client, message):
+	if message.author.id != USER_ID_WONSIKGEJ:
+		return
+
+	for msg in preserve_author(client, message):
 		yield msg
 
 def as_embed(client, msg):

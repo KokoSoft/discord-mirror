@@ -5,7 +5,7 @@ import forwarder
 import tokens
 from channels import *
 import traitors
-from parsers import preserve_author, delete_parser
+from parsers import preserve_author, delete_parser, wonsik_filter
 from logging import handlers
 import logging
 from mod_log_parser import ModLogParser
@@ -78,6 +78,11 @@ sources = [
 			destinations = CHANNEL_ID_CWEL_MOD_LOG,
 			parser = mod_parser,
 			copy_history = True,
+		),
+		forwarder.Config(
+			destinations = [ CHANNEL_ID_CWEL_GEJOWSKIE_WIADOMOSCI, CHANNEL_ID_CWEL_PODSUMOWANIE_STREAMOW ],
+			parser = wonsik_filter,
+			copy_history = False,
 		),
 	], section_name = 'special', presence = discord_user.Status.invisible)
 ]
