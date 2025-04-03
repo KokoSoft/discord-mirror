@@ -25,6 +25,7 @@ class Traitors():
 	):
 		self.msg_channel_id = msg_channel
 		self.log_channel_id = log_channel
+		self.bot = None
 		self.client_ready = asyncio.Event()
 		super().__init__()
 
@@ -99,8 +100,10 @@ class Traitors():
 
 	# On message
 	async def on_message(self, message : discord_user.Message):
-		#if not message.author.id in self.bot_members_set:
-		#	return
+		if not self.bot:
+			return
+		if not message.author.id in self.bot_members_set:
+			return
 
 		if '://tenor.com/' in message.content:
 			return
@@ -284,6 +287,21 @@ class Bot(forwarder.Bot):
 			logger.debug('Fetching guild members...')
 			async for member in guild.fetch_members():
 				members[member.id] = member
+
+		members1 = set()
+		for member in guild.members:
+			members1.add(member.id)
+
+		members2 = set()
+		async for member in guild.fetch_members():
+			members2.add(member.id)
+
+		print(members1 - members2)
+		print(members2 - members1)
+
+		#mem = {'members' : members1, 'fetch_members' : members2 }
+		#with open('bot_members.json', 'w', encoding='utf-8') as f:
+		#	json.dump(mem, f, ensure_ascii=False, indent=4)
 
 		await self.traitors.set_bot(self, guild, members)
 
